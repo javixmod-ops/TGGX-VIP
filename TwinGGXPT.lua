@@ -409,7 +409,7 @@ end
 
 gui = create("ScreenGui", {
 	Name = "TwinGGXPT",
-	Enabled = false,
+	Enabled = true,
 	IgnoreGuiInset = true,
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
