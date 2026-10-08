@@ -1763,51 +1763,76 @@ refreshPage()
 
 -- Intro a pantalla completa; el menú solo se habilita cuando termina la secuencia.
 local function playIntroThenShowMenu()
-	local introGui = create("ScreenGui", {
-		Name = "TwinGGXPTIntro",
-		DisplayOrder = 10000,
-		IgnoreGuiInset = true,
-		ResetOnSpawn = false,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	}, playerGui)
-	local backdrop = create("Frame", {
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = 0,
-		BorderSizePixel = 0,
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 10000,
-	}, introGui)
-	local introText = create("TextLabel", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBlack,
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.new(1, -36, 0, 96),
-		Text = "",
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 34,
-		TextTransparency = 1,
-		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Center,
-		TextYAlignment = Enum.TextYAlignment.Center,
-		ZIndex = 10001,
-	}, introGui)
-
+	local introGui = nil
 	local coreGuiStates = {}
 	local topbarWasEnabled = true
-	local gotTopbarState, topbarState = pcall(function() return StarterGui:GetCore("TopbarEnabled") end)
-	if gotTopbarState and type(topbarState) == "boolean" then topbarWasEnabled = topbarState end
-	for _, coreType in ipairs(Enum.CoreGuiType:GetEnumItems()) do
-		if coreType.Name ~= "All" then
-			local wasEnabled = true
-			pcall(function() wasEnabled = StarterGui:GetCoreGuiEnabled(coreType) end)
-			coreGuiStates[coreType] = wasEnabled
-			pcall(function() StarterGui:SetCoreGuiEnabled(coreType, false) end)
+	local topbarChanged = false
+	local menuOpened = false
+	local function finishIntro()
+		if menuOpened then return end
+		menuOpened = true
+		for coreType, wasEnabled in pairs(coreGuiStates) do
+			pcall(function() StarterGui:SetCoreGuiEnabled(coreType, wasEnabled) end)
 		end
+		if topbarChanged then
+			for attempt = 1, 8 do
+				local setOk = pcall(function() StarterGui:SetCore("TopbarEnabled", topbarWasEnabled) end)
+				if setOk then break end
+				task.wait(0.25)
+			end
+		end
+		if introGui and introGui.Parent then pcall(function() introGui:Destroy() end) end
+		gui.Enabled = true
 	end
-	pcall(function() StarterGui:SetCore("TopbarEnabled", false) end)
-
+	-- Si una animación o CoreGui no responde, no deja el menú bloqueado indefinidamente.
+	task.delay(15, finishIntro)
 	local ok, introError = pcall(function()
+		introGui = create("ScreenGui", {
+			Name = "TwinGGXPTIntro",
+			DisplayOrder = 10000,
+			IgnoreGuiInset = true,
+			ResetOnSpawn = false,
+			ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		}, playerGui)
+		local backdrop = create("Frame", {
+			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+			BackgroundTransparency = 0,
+			BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 10000,
+		}, introGui)
+		local introText = create("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBlack,
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -36, 0, 96),
+			Text = "",
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextSize = 34,
+			TextTransparency = 1,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			ZIndex = 10001,
+		}, introGui)
+
+		local gotTopbarState, topbarState = pcall(function() return StarterGui:GetCore("TopbarEnabled") end)
+		if gotTopbarState and type(topbarState) == "boolean" then topbarWasEnabled = topbarState end
+		for _, coreType in ipairs(Enum.CoreGuiType:GetEnumItems()) do
+			if coreType.Name ~= "All" then
+				local wasEnabled = true
+				pcall(function() wasEnabled = StarterGui:GetCoreGuiEnabled(coreType) end)
+				coreGuiStates[coreType] = wasEnabled
+				pcall(function() StarterGui:SetCoreGuiEnabled(coreType, false) end)
+			end
+		end
+		for attempt = 1, 8 do
+			local setOk = pcall(function() StarterGui:SetCore("TopbarEnabled", false) end)
+			if setOk then topbarChanged = true; break end
+			task.wait(0.25)
+		end
+
 		local function showLine(text)
 			introText.Text = text
 			introText.TextTransparency = 1
@@ -1827,14 +1852,9 @@ local function playIntroThenShowMenu()
 		backdropFade:Play()
 		backdropFade.Completed:Wait()
 	end)
-	if not ok then warn("TGGX VIP intro: " .. tostring(introError)) end
 
-	for coreType, wasEnabled in pairs(coreGuiStates) do
-		pcall(function() StarterGui:SetCoreGuiEnabled(coreType, wasEnabled) end)
-	end
-	pcall(function() StarterGui:SetCore("TopbarEnabled", topbarWasEnabled) end)
-	if introGui.Parent then introGui:Destroy() end
-	gui.Enabled = true
+	if not ok then warn("TGGX VIP intro: " .. tostring(introError)) end
+	finishIntro()
 end
 
 task.spawn(playIntroThenShowMenu)
