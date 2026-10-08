@@ -15,7 +15,6 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
-local gui
 
 local CONFIG = {
 	MaxFovRadius = 360,
@@ -74,7 +73,7 @@ local function setCameraZoomMax(distance)
 	end)
 end
 
--- Aplicar un alcance inicial amplio; el deslizador deja ajustar el zoom máximo.
+-- Aplicar un alcance inicial amplio; el deslizador permite ajustar el zoom máximo.
 setCameraZoomMax(CONFIG.MaxCameraZoom)
 player.CharacterAdded:Connect(function()
 	task.defer(function() setCameraZoomMax(state.cameraZoomMax) end)
@@ -409,7 +408,7 @@ end
 
 gui = create("ScreenGui", {
 	Name = "TwinGGXPT",
-	Enabled = true,
+	Enabled = false,
 	IgnoreGuiInset = true,
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -1736,10 +1735,11 @@ Players.PlayerRemoving:Connect(function(leaving)
 	if state.selectedTarget == leaving then state.selectedTarget = nil end
 end)
 
--- Abrir el menú aun si alguna página falla al dibujarse; el error queda en Output.
-local pageBuildOk, pageBuildError = pcall(refreshPage)
+refreshPage()
+
+
+-- Inicio directo de Twin GG XPT, sin pantalla ni validación de key.
 gui.Enabled = true
-if not pageBuildOk then warn("TGGX VIP: error construyendo las páginas: " .. tostring(pageBuildError)) end
 
 -- Bucle principal del expansor de Hitbox aportado por el usuario.
 -- La GUI solo actualiza isHitboxActive, hitboxSize y showVisualBox.
