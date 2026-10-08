@@ -11,6 +11,7 @@ local Stats = game:GetService("Stats")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
@@ -25,8 +26,8 @@ local CONFIG = {
 	AimDirectness = 0.55,
 	AimLeadSeconds = 0.02,
 	AimRetargetCooldown = 0.30,
-	MinCameraFov = 40,
-	MaxCameraFov = 120,
+	MinCameraZoom = 10,
+	MaxCameraZoom = 500,
 	HitboxMinSize = 5,
 	HitboxMaxSize = 50,
 	HitboxDefaultSize = 10,
@@ -38,8 +39,7 @@ local state = {
 	aimEnabled = false,
 	aimNotifications = true,
 	smoothAim = true,
-	cameraFov = 70,
-	cameraFovSet = false,
+	cameraZoomMax = 500,
 	showFov = true,
 	fovRadius = 175,
 	epsLines = false,
@@ -61,6 +61,25 @@ local state = {
 	antiLag = false,
 }
 
+local function setCameraZoomMax(distance)
+	state.cameraZoomMax = math.clamp(math.floor(distance + 0.5), CONFIG.MinCameraZoom, CONFIG.MaxCameraZoom)
+	pcall(function()
+		if player.CameraMode == Enum.CameraMode.LockFirstPerson then
+			player.CameraMode = Enum.CameraMode.Classic
+		end
+		if player.CameraMinZoomDistance > state.cameraZoomMax then
+			player.CameraMinZoomDistance = state.cameraZoomMax
+		end
+		player.CameraMaxZoomDistance = state.cameraZoomMax
+	end)
+end
+
+-- Aplicar un alcance inicial amplio; el deslizador deja ajustar el zoom máximo.
+setCameraZoomMax(CONFIG.MaxCameraZoom)
+player.CharacterAdded:Connect(function()
+	task.defer(function() setCameraZoomMax(state.cameraZoomMax) end)
+end)
+
 -- Variables del expansor LocalScript aportado. La pestaña HITBOX las controla directamente.
 local isHitboxActive = true
 local hitboxSize = 10
@@ -75,7 +94,7 @@ local translations = {
 			aimAssist = "AIMBOT ÚNICO", notifications = "NOTIFI UI", smoothAim = "SEGUIMIENTO SUAVE",
 		line = "LÍNEAS EPS", box = "CUADRADO EPS", skeleton = "EPS ESQUELETO",
 		health = "EPS VIDA", distance = "EPS METROS", counter = "CONTADOR DE JUGADORES",
-		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraFov = "FOV CÁMARA", language = "IDIOMA",
+		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraZoom = "ZOOM MÁXIMO DE CÁMARA", language = "IDIOMA",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO", aimLocked = "BLOQUEO A UN OBJETIVO", aimLostWall = "SE DEJÓ DE SEGUIR: DETRÁS DE UNA PARED", aimHint = "OBJETIVO MÁS CERCANO · DENTRO DEL FOV · SIN PAREDES",
 		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMAÑO PROPIO", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
@@ -87,7 +106,7 @@ local translations = {
 			aimAssist = "SINGLE AIM ASSIST", notifications = "UI NOTIFICATIONS", smoothAim = "SMOOTH AIM",
 		line = "ESP LINES", box = "ESP BOX", skeleton = "ESP SKELETON",
 		health = "ESP HEALTH", distance = "ESP DISTANCE", counter = "PLAYER COUNTER",
-		visible = "SHOW FOV", radius = "FOV RADIUS", cameraFov = "CAMERA FOV", language = "LANGUAGE",
+		visible = "SHOW FOV", radius = "FOV RADIUS", cameraZoom = "MAX CAMERA ZOOM", language = "LANGUAGE",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
 		noTarget = "NO TARGET", target = "TARGET", aimLocked = "LOCKED ON TARGET", aimLostWall = "STOPPED: TARGET BEHIND WALL", aimHint = "NEAREST TARGET · INSIDE FOV · NO WALLS",
 		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", ownHitboxSize = "OWN HITBOX SIZE", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
@@ -99,7 +118,7 @@ local translations = {
 			aimAssist = "MIRA ASSISTIDA ÚNICA", notifications = "NOTIFICAÇÕES UI", smoothAim = "RASTREAMENTO SUAVE",
 		line = "LINHAS ESP", box = "QUADRO ESP", skeleton = "ESQUELETO ESP",
 		health = "VIDA ESP", distance = "DISTÂNCIA ESP", counter = "CONTADOR DE JOGADORES",
-		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraFov = "FOV DA CÂMERA", language = "IDIOMA",
+		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraZoom = "ZOOM MÁXIMO DA CÂMERA", language = "IDIOMA",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
 		noTarget = "SEM ALVO", target = "ALVO", aimLocked = "ALVO BLOQUEADO", aimLostWall = "PAROU: ALVO ATRÁS DE UMA PAREDE", aimHint = "ALVO VISÍVEL MAIS PRÓXIMO DENTRO DO FOV",
 		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMANHO PRÓPRIO", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
@@ -109,6 +128,8 @@ local translations = {
 
 local old = playerGui:FindFirstChild("TwinGGXPT")
 if old then old:Destroy() end
+local oldIntro = playerGui:FindFirstChild("TwinGGXPTIntro")
+if oldIntro then oldIntro:Destroy() end
 
 local function t(key)
 	return translations[state.language][key] or key
@@ -306,8 +327,27 @@ ReplicatedStorage.ChildAdded:Connect(function(child)
 end)
 
 local noclipOriginalCollision = setmetatable({}, {__mode = "k"})
-local lowDetailEnabledCache = setmetatable({}, {__mode = "k"})
+local lowDetailOriginals = setmetatable({}, {__mode = "k"})
 local originalGlobalShadows = Lighting.GlobalShadows
+local originalTerrainDecoration = workspace.Terrain.Decoration
+local antiLagWorkspaceConnection = nil
+local antiLagLightingConnection = nil
+
+local function applyLowDetailToInstance(instance)
+	if instance:IsA("BasePart") then
+		if lowDetailOriginals[instance] == nil then
+			lowDetailOriginals[instance] = {property = "CastShadow", value = instance.CastShadow}
+		end
+		instance.CastShadow = false
+	elseif instance:IsA("ParticleEmitter") or instance:IsA("Trail") or instance:IsA("Beam")
+		or instance:IsA("Smoke") or instance:IsA("Fire") or instance:IsA("Sparkles")
+		or instance:IsA("PostEffect") then
+		if lowDetailOriginals[instance] == nil then
+			lowDetailOriginals[instance] = {property = "Enabled", value = instance.Enabled}
+		end
+		instance.Enabled = false
+	end
+end
 
 local function getLocalHumanoid()
 	local character = player.Character
@@ -341,18 +381,31 @@ local function restoreNoclip()
 end
 
 local function setAntiLag(enabled)
-	Lighting.GlobalShadows = enabled and false or originalGlobalShadows
-	for _, instance in ipairs(workspace:GetDescendants()) do
-		if instance:IsA("ParticleEmitter") or instance:IsA("Trail") or instance:IsA("Beam") then
-			if lowDetailEnabledCache[instance] == nil then lowDetailEnabledCache[instance] = instance.Enabled end
-			instance.Enabled = enabled and false or lowDetailEnabledCache[instance]
+	if enabled then
+		Lighting.GlobalShadows = false
+		workspace.Terrain.Decoration = false
+		for _, instance in ipairs(workspace:GetDescendants()) do applyLowDetailToInstance(instance) end
+		for _, instance in ipairs(Lighting:GetDescendants()) do applyLowDetailToInstance(instance) end
+		if not antiLagWorkspaceConnection then
+			antiLagWorkspaceConnection = workspace.DescendantAdded:Connect(function(instance)
+				if state.antiLag then applyLowDetailToInstance(instance) end
+			end)
 		end
+		if not antiLagLightingConnection then
+			antiLagLightingConnection = Lighting.DescendantAdded:Connect(function(instance)
+				if state.antiLag then applyLowDetailToInstance(instance) end
+			end)
+		end
+		return
 	end
-	if not enabled then
-		for instance, wasEnabled in pairs(lowDetailEnabledCache) do
-			if instance.Parent then instance.Enabled = wasEnabled end
-			lowDetailEnabledCache[instance] = nil
-		end
+
+	if antiLagWorkspaceConnection then antiLagWorkspaceConnection:Disconnect(); antiLagWorkspaceConnection = nil end
+	if antiLagLightingConnection then antiLagLightingConnection:Disconnect(); antiLagLightingConnection = nil end
+	Lighting.GlobalShadows = originalGlobalShadows
+	workspace.Terrain.Decoration = originalTerrainDecoration
+	for instance, original in pairs(lowDetailOriginals) do
+		pcall(function() instance[original.property] = original.value end)
+		lowDetailOriginals[instance] = nil
 	end
 end
 
@@ -1024,7 +1077,7 @@ end
 
 local function renderFovPage()
 	local page = makePage("FOV")
-	sectionTitle(page, "FOV", "CÍRCULO DE ASISTENCIA Y ÁNGULO DE CÁMARA")
+	sectionTitle(page, "FOV", "CÍRCULO DE ASISTENCIA Y ZOOM DE CÁMARA")
 	toggle(page, 70, t("visible"), function() return state.showFov end, function(value)
 		state.showFov = value
 		fovCircle.Visible = value
@@ -1091,17 +1144,9 @@ local function renderFovPage()
 	addSlider(112, 143, t("radius"), CONFIG.MinFovRadius, CONFIG.MaxFovRadius, state.fovRadius, " px", setFovRadius)
 	label(page, "SOLO ADQUIERE UN OBJETIVO DENTRO DEL CÍRCULO Y CON LÍNEA DE VISIÓN.", UDim2.fromOffset(16, 162), UDim2.new(1, -32, 0, 26), Enum.Font.RobotoMono, MUTED, 7)
 
-	local camera = workspace.CurrentCamera
-	if camera then
-		state.cameraFov = math.clamp(math.floor(camera.FieldOfView + 0.5), CONFIG.MinCameraFov, CONFIG.MaxCameraFov)
-	end
-	addSlider(198, 229, t("cameraFov"), CONFIG.MinCameraFov, CONFIG.MaxCameraFov, state.cameraFov, "°", function(value)
-		state.cameraFov = value
-		state.cameraFovSet = true
-		local currentCamera = workspace.CurrentCamera
-		if currentCamera then currentCamera.FieldOfView = value end
-	end)
-	label(page, "FOV DE CÁMARA CAMBIA EL ÁNGULO DE VISTA, NO LA DISTANCIA MÁXIMA DEL MAPA.", UDim2.fromOffset(16, 247), UDim2.new(1, -32, 0, 34), Enum.Font.RobotoMono, MUTED, 7)
+	state.cameraZoomMax = math.clamp(math.floor(player.CameraMaxZoomDistance + 0.5), CONFIG.MinCameraZoom, CONFIG.MaxCameraZoom)
+	addSlider(198, 229, t("cameraZoom"), CONFIG.MinCameraZoom, CONFIG.MaxCameraZoom, state.cameraZoomMax, " studs", setCameraZoomMax)
+	label(page, "ZOOM MÁXIMO: DISTANCIA PERMITIDA PARA ALEJAR LA CÁMARA.", UDim2.fromOffset(16, 247), UDim2.new(1, -32, 0, 34), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function deviceIcon()
@@ -1150,7 +1195,7 @@ local function renderPlayerPage()
 		state.antiLag = value
 		setAntiLag(value)
 	end)
-	label(page, "VELOCIDAD Y SALTO: 8–80 / 50–200 · ANTI LAG OCULTA EFECTOS LOCALES.", UDim2.fromOffset(16, 260), UDim2.new(1, -32, 0, 17), Enum.Font.RobotoMono, MUTED, 7)
+	label(page, "VELOCIDAD Y SALTO: 8–80 / 50–200 · ANTI LAG REDUCE EFECTOS Y SOMBRAS.", UDim2.fromOffset(16, 260), UDim2.new(1, -32, 0, 17), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function renderMiscPage()
@@ -1560,8 +1605,6 @@ local function targetCanReceiveAssist(camera, targetPlayer)
 	return getAimCandidate(camera, targetPlayer)
 end
 
-local cameraWithSetFov = nil
-
 local function updateFrame(deltaTime)
 	applyPlayerMovement()
 	if state.noclip then applyNoclip() end
@@ -1571,10 +1614,6 @@ local function updateFrame(deltaTime)
 
 	local camera = workspace.CurrentCamera
 	if not camera then return end
-	if state.cameraFovSet and camera ~= cameraWithSetFov then
-		camera.FieldOfView = state.cameraFov
-	end
-	cameraWithSetFov = camera
 	local center = fovCenter(camera)
 	fovCircle.Position = UDim2.fromOffset(center.X, center.Y)
 	hudText.Text = (state.language == "ES" and "JUGADORES: " or state.language == "PT" and "JOGADORES: " or "PLAYERS: ") .. #Players:GetPlayers()
@@ -1722,8 +1761,83 @@ end)
 refreshPage()
 
 
--- Inicio directo de Twin GG XPT, sin pantalla ni validación de key.
-gui.Enabled = true
+-- Intro a pantalla completa; el menú solo se habilita cuando termina la secuencia.
+local function playIntroThenShowMenu()
+	local introGui = create("ScreenGui", {
+		Name = "TwinGGXPTIntro",
+		DisplayOrder = 10000,
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	}, playerGui)
+	local backdrop = create("Frame", {
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 0,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 10000,
+	}, introGui)
+	local introText = create("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBlack,
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -36, 0, 96),
+		Text = "",
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextSize = 34,
+		TextTransparency = 1,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		ZIndex = 10001,
+	}, introGui)
+
+	local coreGuiStates = {}
+	local topbarWasEnabled = true
+	local gotTopbarState, topbarState = pcall(function() return StarterGui:GetCore("TopbarEnabled") end)
+	if gotTopbarState and type(topbarState) == "boolean" then topbarWasEnabled = topbarState end
+	for _, coreType in ipairs(Enum.CoreGuiType:GetEnumItems()) do
+		if coreType.Name ~= "All" then
+			local wasEnabled = true
+			pcall(function() wasEnabled = StarterGui:GetCoreGuiEnabled(coreType) end)
+			coreGuiStates[coreType] = wasEnabled
+			pcall(function() StarterGui:SetCoreGuiEnabled(coreType, false) end)
+		end
+	end
+	pcall(function() StarterGui:SetCore("TopbarEnabled", false) end)
+
+	local ok, introError = pcall(function()
+		local function showLine(text)
+			introText.Text = text
+			introText.TextTransparency = 1
+			local fadeIn = TweenService:Create(introText, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
+			fadeIn:Play()
+			fadeIn.Completed:Wait()
+			task.wait(0.9)
+			local fadeOut = TweenService:Create(introText, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
+			fadeOut:Play()
+			fadeOut.Completed:Wait()
+		end
+
+		showLine("TGGX    VIP")
+		showLine("Créditos: JxVI mods")
+		showLine("Bienvenido: " .. player.Name)
+		local backdropFade = TweenService:Create(backdrop, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {BackgroundTransparency = 1})
+		backdropFade:Play()
+		backdropFade.Completed:Wait()
+	end)
+	if not ok then warn("TGGX VIP intro: " .. tostring(introError)) end
+
+	for coreType, wasEnabled in pairs(coreGuiStates) do
+		pcall(function() StarterGui:SetCoreGuiEnabled(coreType, wasEnabled) end)
+	end
+	pcall(function() StarterGui:SetCore("TopbarEnabled", topbarWasEnabled) end)
+	if introGui.Parent then introGui:Destroy() end
+	gui.Enabled = true
+end
+
+task.spawn(playIntroThenShowMenu)
 
 -- Bucle principal del expansor de Hitbox aportado por el usuario.
 -- La GUI solo actualiza isHitboxActive, hitboxSize y showVisualBox.
