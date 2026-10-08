@@ -485,6 +485,19 @@ corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
 gradient(root, Color3.fromRGB(18, 30, 48), Color3.fromRGB(8, 14, 25), 115)
 
+local menuBackground = create("ImageLabel", {
+	Name = "MenuBackground",
+	Active = false,
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	Position = UDim2.fromScale(0, 0),
+	Size = UDim2.fromScale(1, 1),
+	Image = "rbxassetid://135136288920049",
+	ImageTransparency = 0.25,
+	ScaleType = Enum.ScaleType.Crop,
+	ZIndex = 10,
+}, root)
+
 local rootGlow = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(43, 139, 211),
 	BackgroundTransparency = 0.86,
