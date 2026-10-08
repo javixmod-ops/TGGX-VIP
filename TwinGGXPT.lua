@@ -21,10 +21,12 @@ local CONFIG = {
 	MinFovRadius = 70,
 	TargetTeammates = false,
 	RequireLineOfSight = true,
-	AimBetaSmoothness = 0.38,
-	AimLockSmoothness = 0.82,
+	AimSmoothness = 0.12,
+	AimDirectness = 0.55,
 	AimLeadSeconds = 0.02,
-	AimRetargetCooldown = 0.05,
+	AimRetargetCooldown = 0.30,
+	MinCameraFov = 40,
+	MaxCameraFov = 120,
 	HitboxMinSize = 5,
 	HitboxMaxSize = 50,
 	HitboxDefaultSize = 10,
@@ -33,8 +35,11 @@ local CONFIG = {
 local state = {
 	page = "AIMBOT",
 	language = "ES",
-	aimBeta = false,
-	aimLock = false,
+	aimEnabled = false,
+	aimNotifications = true,
+	smoothAim = true,
+	cameraFov = 70,
+	cameraFovSet = false,
 	showFov = true,
 	fovRadius = 175,
 	epsLines = false,
@@ -43,7 +48,6 @@ local state = {
 	epsHealth = false,
 	epsDistance = false,
 	selectedTarget = nil,
-	betaTarget = nil,
 	hitboxEnabled = true,
 	hitboxVisible = true,
 	smallOwnHitbox = false,
@@ -68,36 +72,36 @@ local translations = {
 	ES = {
 		title = "TWIN GG XPT",
 		pageAim = "AIMBOT", pageEps = "EPS", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC",
-		beta = "AIMBOT (BETA)", lock = "AIMBOT LOCK", choose = "CAMBIAR OBJETIVO",
+			aimAssist = "AIMBOT ÚNICO", notifications = "NOTIFI UI", smoothAim = "SEGUIMIENTO SUAVE",
 		line = "LÍNEAS EPS", box = "CUADRADO EPS", skeleton = "EPS ESQUELETO",
 		health = "EPS VIDA", distance = "EPS METROS", counter = "CONTADOR DE JUGADORES",
-		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", language = "IDIOMA",
+		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraFov = "FOV CÁMARA", language = "IDIOMA",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
-		noTarget = "SIN OBJETIVO", target = "OBJETIVO",
+		noTarget = "SIN OBJETIVO", target = "OBJETIVO", aimLocked = "BLOQUEO A UN OBJETIVO", aimLostWall = "SE DEJÓ DE SEGUIR: DETRÁS DE UNA PARED", aimHint = "OBJETIVO MÁS CERCANO · DENTRO DEL FOV · SIN PAREDES",
 		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMAÑO PROPIO", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
 		speed = "VELOCIDAD", resetSpeed = "RESET VELOCIDAD", superJump = "SUPER SALTO", resetJump = "RESET SUPER SALTO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 	EN = {
 		title = "TWIN GG XPT",
 		pageAim = "AIM ASSIST", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC",
-		beta = "AIM ASSIST (BETA)", lock = "AIM LOCK", choose = "CHANGE TARGET",
+			aimAssist = "SINGLE AIM ASSIST", notifications = "UI NOTIFICATIONS", smoothAim = "SMOOTH AIM",
 		line = "ESP LINES", box = "ESP BOX", skeleton = "ESP SKELETON",
 		health = "ESP HEALTH", distance = "ESP DISTANCE", counter = "PLAYER COUNTER",
-		visible = "SHOW FOV", radius = "FOV RADIUS", language = "LANGUAGE",
+		visible = "SHOW FOV", radius = "FOV RADIUS", cameraFov = "CAMERA FOV", language = "LANGUAGE",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
-		noTarget = "NO TARGET", target = "TARGET",
+		noTarget = "NO TARGET", target = "TARGET", aimLocked = "LOCKED ON TARGET", aimLostWall = "STOPPED: TARGET BEHIND WALL", aimHint = "NEAREST TARGET · INSIDE FOV · NO WALLS",
 		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", ownHitboxSize = "OWN HITBOX SIZE", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
 		speed = "SPEED", resetSpeed = "RESET SPEED", superJump = "SUPER JUMP", resetJump = "RESET JUMP", noclip = "NOCLIP", antiLag = "LOW GRAPHICS",
 	},
 	PT = {
 		title = "TWIN GG XPT",
 		pageAim = "MIRA", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC",
-		beta = "MIRA ASSISTIDA (BETA)", lock = "TRAVAR MIRA", choose = "MUDAR ALVO",
+			aimAssist = "MIRA ASSISTIDA ÚNICA", notifications = "NOTIFICAÇÕES UI", smoothAim = "RASTREAMENTO SUAVE",
 		line = "LINHAS ESP", box = "QUADRO ESP", skeleton = "ESQUELETO ESP",
 		health = "VIDA ESP", distance = "DISTÂNCIA ESP", counter = "CONTADOR DE JOGADORES",
-		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", language = "IDIOMA",
+		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraFov = "FOV DA CÂMERA", language = "IDIOMA",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
-		noTarget = "SEM ALVO", target = "ALVO",
+		noTarget = "SEM ALVO", target = "ALVO", aimLocked = "ALVO BLOQUEADO", aimLostWall = "PAROU: ALVO ATRÁS DE UMA PAREDE", aimHint = "ALVO VISÍVEL MAIS PRÓXIMO DENTRO DO FOV",
 		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMANHO PRÓPRIO", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
 		speed = "VELOCIDADE", resetSpeed = "RESET VELOCIDADE", superJump = "SUPER PULO", resetJump = "RESET PULO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
@@ -372,6 +376,59 @@ local fovCircle = create("Frame", {
 }, gui)
 corner(fovCircle, 999)
 stroke(fovCircle, ACCENT, 1.4, 0.15)
+
+local aimToast = create("Frame", {
+	AnchorPoint = Vector2.new(1, 0),
+	BackgroundColor3 = SURFACE_2,
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	Position = UDim2.new(1, -16, 0, 16),
+	Size = UDim2.fromOffset(300, 54),
+	Visible = false,
+	ZIndex = 230,
+}, gui)
+corner(aimToast, 10)
+local aimToastStroke = stroke(aimToast, ACCENT, 1.2, 1)
+local aimToastText = create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamBold,
+	Position = UDim2.fromOffset(12, 5),
+	Size = UDim2.new(1, -24, 1, -10),
+	Text = "",
+	TextColor3 = WHITE,
+	TextSize = 11,
+	TextWrapped = true,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextYAlignment = Enum.TextYAlignment.Center,
+	TextTransparency = 1,
+	ZIndex = 231,
+}, aimToast)
+local aimToastToken = 0
+local function showAimNotification(message, color)
+	if not state.aimNotifications then return end
+	aimToastToken += 1
+	local token = aimToastToken
+	aimToastText.Text = message
+	aimToastStroke.Color = color or ACCENT
+	aimToast.Visible = true
+	aimToast.BackgroundTransparency = 1
+	aimToastText.TextTransparency = 1
+	aimToastStroke.Transparency = 1
+	TweenService:Create(aimToast, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.10}):Play()
+	TweenService:Create(aimToastText, TweenInfo.new(0.16), {TextTransparency = 0}):Play()
+	TweenService:Create(aimToastStroke, TweenInfo.new(0.16), {Transparency = 0.1}):Play()
+	task.delay(2.2, function()
+		if token ~= aimToastToken or not aimToast.Parent then return end
+		local fade = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		local frameTween = TweenService:Create(aimToast, fade, {BackgroundTransparency = 1})
+		TweenService:Create(aimToastText, fade, {TextTransparency = 1}):Play()
+		TweenService:Create(aimToastStroke, fade, {Transparency = 1}):Play()
+		frameTween.Completed:Connect(function()
+			if token == aimToastToken then aimToast.Visible = false end
+		end)
+		frameTween:Play()
+	end)
+end
 
 local fovAdjustOverlay = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(4, 19, 49),
@@ -786,14 +843,21 @@ local function lineOfSight(character, point)
 end
 
 local function getAimCandidate(camera, targetPlayer)
-	local character, _, rootPart, head = targetPlayer and getPlayerParts(targetPlayer)
-	if not character or not rootPart or not head or not isValidTarget(targetPlayer) then return nil end
+	if not camera or not targetPlayer then return nil, nil, nil, nil, "invalid" end
+	-- No usar `targetPlayer and getPlayerParts(...)`: el operador `and` colapsa
+	-- los retornos múltiples y dejaba rootPart/head en nil, rompiendo todo el selector.
+	local character, _, rootPart, head = getPlayerParts(targetPlayer)
+	if not character or not rootPart or not head or not isValidTarget(targetPlayer) then
+		return nil, nil, nil, nil, "invalid"
+	end
 	local projected, onScreen = camera:WorldToViewportPoint(head.Position)
-	if not onScreen or projected.Z <= 0 then return nil end
+	if not onScreen or projected.Z <= 0 then return nil, nil, nil, nil, "offscreen" end
 	local guiPoint = viewportToGuiPoint(camera, projected)
-	if (guiPoint - fovCenter(camera)).Magnitude > state.fovRadius then return nil end
-	if not lineOfSight(character, head.Position) then return nil end
-	return character, rootPart, head, guiPoint
+	if (guiPoint - fovCenter(camera)).Magnitude > state.fovRadius then
+		return nil, nil, nil, nil, "outside_fov"
+	end
+	if not lineOfSight(character, head.Position) then return nil, nil, nil, nil, "occluded" end
+	return character, rootPart, head, guiPoint, nil
 end
 
 local function findClosestTarget(ignoreFov)
@@ -814,55 +878,35 @@ local function findClosestTarget(ignoreFov)
 	return best
 end
 
-local function cycleTarget()
-	local available = {}
-	local camera = workspace.CurrentCamera
-	if not camera then return end
-	for _, candidate in ipairs(Players:GetPlayers()) do
-		if getAimCandidate(camera, candidate) then table.insert(available, candidate) end
-	end
-	if #available == 0 then
-		if state.aimBeta then state.betaTarget = nil else state.selectedTarget = nil end
-		return
-	end
-	table.sort(available, function(a, b) return a.Name < b.Name end)
-	local current = state.aimBeta and state.betaTarget or state.selectedTarget
-	local currentIndex = table.find(available, current)
-	local nextTarget = available[(currentIndex or 0) % #available + 1]
-	if state.aimBeta then
-		state.betaTarget = nextTarget
-	else
-		state.selectedTarget = nextTarget
-	end
-end
+local nextAimAcquireAt = 0
 
 local function renderAimPage()
 	local page = makePage("AIMBOT")
-	sectionTitle(page, t("pageAim"), "ASISTENCIA OFICIAL · SIN SILENT AIM")
-	toggle(page, 73, t("beta"), function() return state.aimBeta end, function(value)
-		state.aimBeta = value
+	sectionTitle(page, t("pageAim"), "ASISTENCIA DE MIRA · UN OBJETIVO VISIBLE")
+	toggle(page, 72, t("aimAssist"), function() return state.aimEnabled end, function(value)
+		state.aimEnabled = value
+		state.selectedTarget = nil
+		nextAimAcquireAt = 0
 		if value then
-			state.aimLock = false
-			state.selectedTarget = nil
-			state.betaTarget = findClosestTarget(false)
-		else
-			state.betaTarget = nil
+			local target = findClosestTarget(false)
+			if target then
+				state.selectedTarget = target
+				showAimNotification(t("aimLocked") .. ": " .. target.DisplayName, GREEN)
+			end
 		end
 	end)
-	toggle(page, 112, t("lock"), function() return state.aimLock end, function(value)
-		state.aimLock = value
-		if value then
-			state.aimBeta = false
-			state.betaTarget = nil
-			state.selectedTarget = findClosestTarget(false)
-		end
-		if not value then state.selectedTarget = nil end
+	toggle(page, 109, t("notifications"), function() return state.aimNotifications end, function(value)
+		state.aimNotifications = value
+		if not value then aimToast.Visible = false end
+	end)
+	toggle(page, 146, t("smoothAim"), function() return state.smoothAim end, function(value)
+		state.smoothAim = value
 	end)
 
 	local targetPanel = create("Frame", {
 		BackgroundColor3 = SURFACE_2,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(16, 158),
+		Position = UDim2.fromOffset(16, 186),
 		Size = UDim2.new(1, -32, 0, 80),
 		ZIndex = 12,
 	}, page)
@@ -870,24 +914,7 @@ local function renderAimPage()
 	stroke(targetPanel, ACCENT, 1, 0.65)
 	local targetName = label(targetPanel, t("noTarget"), UDim2.fromOffset(12, 10), UDim2.new(1, -24, 0, 21), Enum.Font.GothamBold, WHITE, 12)
 	targetName.Name = "TargetName"
-	label(targetPanel, "LA ASISTENCIA SOLO SIGUE OBJETIVOS VISIBLES DENTRO DEL FOV.", UDim2.fromOffset(12, 33), UDim2.new(1, -24, 0, 17), Enum.Font.RobotoMono, MUTED, 7)
-	local nextButton = create("TextButton", {
-		BackgroundColor3 = ACCENT,
-		BorderSizePixel = 0,
-		Font = Enum.Font.GothamBold,
-		Position = UDim2.new(1, -115, 1, -25),
-		Size = UDim2.fromOffset(103, 18),
-		Text = t("choose"),
-		TextColor3 = Color3.fromRGB(6, 17, 27),
-		TextSize = 7,
-		ZIndex = 13,
-	}, targetPanel)
-	corner(nextButton, 6)
-	nextButton.Activated:Connect(function()
-		cycleTarget()
-		local activeTarget = state.aimBeta and state.betaTarget or state.selectedTarget
-		targetName.Text = activeTarget and (t("target") .. ": " .. activeTarget.DisplayName) or t("noTarget")
-	end)
+	label(targetPanel, t("aimHint"), UDim2.fromOffset(12, 37), UDim2.new(1, -24, 0, 28), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function renderHitboxPage()
@@ -997,75 +1024,84 @@ end
 
 local function renderFovPage()
 	local page = makePage("FOV")
-	sectionTitle(page, "FOV", "CAMPO DE VISIÓN PARA LA ASISTENCIA")
-	toggle(page, 72, t("visible"), function() return state.showFov end, function(value)
+	sectionTitle(page, "FOV", "CÍRCULO DE ASISTENCIA Y ÁNGULO DE CÁMARA")
+	toggle(page, 70, t("visible"), function() return state.showFov end, function(value)
 		state.showFov = value
 		fovCircle.Visible = value
 	end)
-	label(page, t("radius"), UDim2.fromOffset(16, 123), UDim2.new(1, -32, 0, 20), Enum.Font.GothamMedium, WHITE, 11)
-	local valueText = label(page, tostring(state.fovRadius) .. " px", UDim2.new(1, -72, 0, 123), UDim2.fromOffset(56, 20), Enum.Font.RobotoMono, ACCENT, 9)
-	valueText.TextXAlignment = Enum.TextXAlignment.Right
-	local bar = create("Frame", {
-		Active = true,
-		BackgroundColor3 = Color3.fromRGB(56, 70, 92),
-		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(16, 157),
-		Size = UDim2.new(1, -32, 0, 8),
-		ZIndex = 12,
-	}, page)
-	corner(bar, 8)
-	local fill = create("Frame", {
-		BackgroundColor3 = ACCENT,
-		BorderSizePixel = 0,
-		Size = UDim2.fromScale((state.fovRadius - CONFIG.MinFovRadius) / (CONFIG.MaxFovRadius - CONFIG.MinFovRadius), 1),
-		ZIndex = 13,
-	}, bar)
-	corner(fill, 8)
-	local handle = create("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = WHITE,
-		BorderSizePixel = 0,
-		Position = UDim2.fromScale((state.fovRadius - CONFIG.MinFovRadius) / (CONFIG.MaxFovRadius - CONFIG.MinFovRadius), 0.5),
-		Size = UDim2.fromOffset(16, 16),
-		ZIndex = 14,
-	}, bar)
-	corner(handle, 16)
 
-	local changing = false
-	local function updateSlider(input)
-		local ratio = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
-		setFovRadius(CONFIG.MinFovRadius + (CONFIG.MaxFovRadius - CONFIG.MinFovRadius) * ratio)
-		fill.Size = UDim2.fromScale(ratio, 1)
-		handle.Position = UDim2.fromScale(ratio, 0.5)
-		valueText.Text = tostring(state.fovRadius) .. " px"
-	end
-	bar.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			changing = true
-			updateSlider(input)
+	local function addSlider(titleY, barY, titleText, minValue, maxValue, currentValue, suffix, onChanged)
+		label(page, titleText, UDim2.fromOffset(16, titleY), UDim2.new(1, -88, 0, 19), Enum.Font.GothamMedium, WHITE, 10)
+		local valueText = label(page, tostring(currentValue) .. suffix, UDim2.new(1, -72, 0, titleY), UDim2.fromOffset(56, 19), Enum.Font.RobotoMono, ACCENT, 9)
+		valueText.TextXAlignment = Enum.TextXAlignment.Right
+		local bar = create("Frame", {
+			Active = true,
+			BackgroundColor3 = Color3.fromRGB(56, 70, 92),
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(16, barY),
+			Size = UDim2.new(1, -32, 0, 8),
+			ZIndex = 12,
+		}, page)
+		corner(bar, 8)
+		local initialRatio = math.clamp((currentValue - minValue) / (maxValue - minValue), 0, 1)
+		local fill = create("Frame", {
+			BackgroundColor3 = ACCENT,
+			BorderSizePixel = 0,
+			Size = UDim2.fromScale(initialRatio, 1),
+			ZIndex = 13,
+		}, bar)
+		corner(fill, 8)
+		local handle = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = WHITE,
+			BorderSizePixel = 0,
+			Position = UDim2.fromScale(initialRatio, 0.5),
+			Size = UDim2.fromOffset(16, 16),
+			ZIndex = 14,
+		}, bar)
+		corner(handle, 16)
+		local changing = false
+		local function setFromInput(input)
+			if bar.AbsoluteSize.X <= 0 then return end
+			local ratio = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+			local value = math.floor(minValue + (maxValue - minValue) * ratio + 0.5)
+			value = math.clamp(value, minValue, maxValue)
+			local normalized = (value - minValue) / (maxValue - minValue)
+			onChanged(value)
+			fill.Size = UDim2.fromScale(normalized, 1)
+			handle.Position = UDim2.fromScale(normalized, 0.5)
+			valueText.Text = tostring(value) .. suffix
 		end
+		bar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				changing = true
+				setFromInput(input)
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if changing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				setFromInput(input)
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then changing = false end
+		end)
+	end
+
+	addSlider(112, 143, t("radius"), CONFIG.MinFovRadius, CONFIG.MaxFovRadius, state.fovRadius, " px", setFovRadius)
+	label(page, "SOLO ADQUIERE UN OBJETIVO DENTRO DEL CÍRCULO Y CON LÍNEA DE VISIÓN.", UDim2.fromOffset(16, 162), UDim2.new(1, -32, 0, 26), Enum.Font.RobotoMono, MUTED, 7)
+
+	local camera = workspace.CurrentCamera
+	if camera then
+		state.cameraFov = math.clamp(math.floor(camera.FieldOfView + 0.5), CONFIG.MinCameraFov, CONFIG.MaxCameraFov)
+	end
+	addSlider(198, 229, t("cameraFov"), CONFIG.MinCameraFov, CONFIG.MaxCameraFov, state.cameraFov, "°", function(value)
+		state.cameraFov = value
+		state.cameraFovSet = true
+		local currentCamera = workspace.CurrentCamera
+		if currentCamera then currentCamera.FieldOfView = value end
 	end)
-	UserInputService.InputChanged:Connect(function(input)
-		if changing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateSlider(input) end
-	end)
-	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then changing = false end
-	end)
-	label(page, "UN OBJETIVO DEBE ESTAR DENTRO DEL CÍRCULO Y TENER LÍNEA DE VISIÓN.", UDim2.fromOffset(16, 185), UDim2.new(1, -32, 0, 30), Enum.Font.RobotoMono, MUTED, 8)
-	local adjust = create("TextButton", {
-		AutoButtonColor = false,
-		BackgroundColor3 = ACCENT,
-		BorderSizePixel = 0,
-		Font = Enum.Font.GothamBold,
-		Position = UDim2.fromOffset(16, 226),
-		Size = UDim2.new(1, -32, 0, 28),
-		Text = "AJUSTAR FOV",
-		TextColor3 = Color3.fromRGB(6, 17, 28),
-		TextSize = 9,
-		ZIndex = 14,
-	}, page)
-	corner(adjust, 8)
-	adjust.Activated:Connect(adjustFovToDevice)
+	label(page, "FOV DE CÁMARA CAMBIA EL ÁNGULO DE VISTA, NO LA DISTANCIA MÁXIMA DEL MAPA.", UDim2.fromOffset(16, 247), UDim2.new(1, -32, 0, 34), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function deviceIcon()
@@ -1519,11 +1555,12 @@ local function getSkeletonLinks(character)
 end
 
 local fpsFrames, fpsLast, fps = 0, os.clock(), 0
-local lastAimRetargetAt = 0
 
 local function targetCanReceiveAssist(camera, targetPlayer)
 	return getAimCandidate(camera, targetPlayer)
 end
+
+local cameraWithSetFov = nil
 
 local function updateFrame(deltaTime)
 	applyPlayerMovement()
@@ -1534,6 +1571,10 @@ local function updateFrame(deltaTime)
 
 	local camera = workspace.CurrentCamera
 	if not camera then return end
+	if state.cameraFovSet and camera ~= cameraWithSetFov then
+		camera.FieldOfView = state.cameraFov
+	end
+	cameraWithSetFov = camera
 	local center = fovCenter(camera)
 	fovCircle.Position = UDim2.fromOffset(center.X, center.Y)
 	hudText.Text = (state.language == "ES" and "JUGADORES: " or state.language == "PT" and "JOGADORES: " or "PLAYERS: ") .. #Players:GetPlayers()
@@ -1624,33 +1665,41 @@ local function updateFrame(deltaTime)
 		end
 	end
 
-	-- La asistencia solo mueve suavemente la cámara hacia un objetivo visible dentro del FOV.
-	if state.aimBeta or state.aimLock then
-		local target
-		if state.aimLock then
-			-- LOCK persigue de forma continua al objetivo visible más cercano dentro del FOV.
-			if os.clock() - lastAimRetargetAt >= CONFIG.AimRetargetCooldown then
-				state.selectedTarget = findClosestTarget(false)
-				lastAimRetargetAt = os.clock()
+	-- Asistencia de mira de un solo objetivo; solo candidatos visibles y dentro del FOV.
+	if state.aimEnabled then
+		local now = os.clock()
+		local character, rootPart, head, _, failure
+		if state.selectedTarget then
+			character, rootPart, head, _, failure = getAimCandidate(camera, state.selectedTarget)
+			if not character then
+				local previousTarget = state.selectedTarget
+				state.selectedTarget = nil
+				nextAimAcquireAt = now + CONFIG.AimRetargetCooldown
+				if failure == "occluded" then
+					showAimNotification(t("aimLostWall") .. ": " .. previousTarget.DisplayName, RED)
+				end
 			end
-			target = state.selectedTarget
-		else
-			-- BETA conserva el objetivo elegido con CAMBIAR OBJETIVO;
-			-- sin objetivo elegido, asiste al más cercano visible dentro del FOV.
-			local chosen = state.betaTarget
-			target = targetCanReceiveAssist(camera, chosen) and chosen or findClosestTarget(false)
-			if not targetCanReceiveAssist(camera, chosen) then state.betaTarget = nil end
 		end
-		local character, rootPart, head = targetCanReceiveAssist(camera, target)
-		if not target or not character then
-			if state.aimLock then state.selectedTarget = nil else state.betaTarget = nil end
-		else
+		if not state.selectedTarget and now >= nextAimAcquireAt then
+			nextAimAcquireAt = now + CONFIG.AimRetargetCooldown
+			local newTarget = findClosestTarget(false)
+			if newTarget then
+				state.selectedTarget = newTarget
+				character, rootPart, head = getAimCandidate(camera, newTarget)
+				if character then
+					showAimNotification(t("aimLocked") .. ": " .. newTarget.DisplayName, GREEN)
+				end
+			end
+		end
+		if character and rootPart and head then
 			local predictedPoint = head.Position + rootPart.AssemblyLinearVelocity * CONFIG.AimLeadSeconds
 			local desired = CFrame.lookAt(camera.CFrame.Position, predictedPoint)
-			local baseSmoothness = state.aimLock and CONFIG.AimLockSmoothness or CONFIG.AimBetaSmoothness
+			local baseSmoothness = state.smoothAim and CONFIG.AimSmoothness or CONFIG.AimDirectness
 			local smoothness = 1 - (1 - baseSmoothness) ^ math.clamp((deltaTime or 1 / 60) * 60, 0.25, 2)
 			camera.CFrame = camera.CFrame:Lerp(desired, smoothness)
 		end
+	elseif state.selectedTarget then
+		state.selectedTarget = nil
 	end
 end
 
