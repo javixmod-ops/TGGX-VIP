@@ -491,7 +491,7 @@ local menuBackground = create("ImageLabel", {
 	BorderSizePixel = 0,
 	Position = UDim2.fromScale(0, 0),
 	Size = UDim2.fromScale(1, 1),
-	Image = "rbxassetid://105104843236302",
+	Image = "https://i.pinimg.com/736x/20/14/bd/2014bdf5fbf2495ee7481a6a20399acf.jpg",
 	ImageTransparency = 0,
 	ScaleType = Enum.ScaleType.Crop,
 	ZIndex = 11,
@@ -499,7 +499,7 @@ local menuBackground = create("ImageLabel", {
 
 task.delay(8, function()
 	if menuBackground.Parent and not menuBackground.IsLoaded then
-		warn("El fondo 105104843236302 no cargó. Revisa en Output si la experiencia tiene permiso para usar la imagen.")
+		warn("El fondo desde Pinterest no cargó. Roblox puede bloquear dominios externos; revisa Output.")
 	end
 end)
 
