@@ -161,6 +161,28 @@ local hitboxAdjustToken = 0
 local beginHitboxAdjustment
 local finishHitboxAdjustment
 
+local LOCAL_MIN_HITBOX_SIZE = Vector3.new(0.1, 0.1, 0.1)
+local localOwnHitboxOriginalSizes = setmetatable({}, {__mode = "k"})
+
+local function updateLocalOwnHitbox(enabled)
+	local character = LocalPlayer.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not rootPart or not rootPart:IsA("BasePart") then return end
+
+	if enabled then
+		if localOwnHitboxOriginalSizes[character] == nil then
+			localOwnHitboxOriginalSizes[character] = rootPart.Size
+		end
+		rootPart.Size = LOCAL_MIN_HITBOX_SIZE
+	else
+		local originalSize = localOwnHitboxOriginalSizes[character]
+		if originalSize then
+			rootPart.Size = originalSize
+			localOwnHitboxOriginalSizes[character] = nil
+		end
+	end
+end
+
 local function setHitboxStatus(message, color)
 	hitboxStatus = message
 	hitboxStatusColor = color or MUTED
@@ -245,15 +267,15 @@ local function queueHitboxSync()
 end
 
 local function requestSmallOwnHitbox(enabled)
+	state.smallOwnHitbox = enabled == true
+	updateLocalOwnHitbox(state.smallOwnHitbox)
 	local remote = ReplicatedStorage:FindFirstChild(smallOwnHitboxRemoteName)
 	if not remote or not remote:IsA("RemoteEvent") then
-		state.smallOwnHitbox = false
-		setHitboxStatus("FALTA TGX_SmallOwnHitbox EN EL SERVIDOR", RED)
+		setHitboxStatus(state.smallOwnHitbox and "HITBOX MÍNIMA LOCAL · SERVIDOR NO DETECTADO" or "HITBOX MÍNIMA DESACTIVADA", state.smallOwnHitbox and ACCENT or MUTED)
 		return
 	end
-	state.smallOwnHitbox = enabled == true
 	remote:FireServer(state.smallOwnHitbox)
-	setHitboxStatus(state.smallOwnHitbox and "SOLICITUD DE HITBOX MÍNIMA ENVIADA" or "HITBOX MÍNIMA DESACTIVADA", state.smallOwnHitbox and GREEN or MUTED)
+	setHitboxStatus(state.smallOwnHitbox and "HITBOX MÍNIMA LOCAL · SOLICITUD ENVIADA" or "HITBOX MÍNIMA DESACTIVADA", state.smallOwnHitbox and GREEN or MUTED)
 end
 
 -- El Script de servidor puede iniciarse después de la GUI. Esperar el RemoteEvent
@@ -1627,6 +1649,8 @@ restoreLocalHitboxExpander = function()
 end
 
 RunService.RenderStepped:Connect(function()
+	-- Aplicar únicamente al jugador local; conservar la actualización del expansor remoto aparte.
+	updateLocalOwnHitbox(state.smallOwnHitbox)
 	if not isHitboxActive then return end
 
 	for _, player in pairs(Players:GetPlayers()) do
