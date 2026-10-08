@@ -475,7 +475,7 @@ end
 local root = create("Frame", {
 	Active = true,
 	BackgroundColor3 = SURFACE,
-	BackgroundTransparency = 1,
+	BackgroundTransparency = 0,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
 	Position = UDim2.new(0.5, -228, 0.5, -190),
@@ -496,6 +496,12 @@ local menuBackground = create("ImageLabel", {
 	ScaleType = Enum.ScaleType.Crop,
 	ZIndex = 11,
 }, root)
+
+task.delay(8, function()
+	if menuBackground.Parent and not menuBackground.IsLoaded then
+		warn("El fondo 135136288920049 no cargó. Revisa en Output si la experiencia tiene permiso para usar el decal.")
+	end
+end)
 
 local rootGlow = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(43, 139, 211),
