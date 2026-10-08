@@ -1,14 +1,16 @@
 -- Coloca este Script en ServerScriptService.
 -- El gamepass se valida fuera de este archivo: marca al VIP con
 -- player:SetAttribute("CanUseImmortalityHitbox", true) tras validar la compra.
--- El arma/daño del juego debe consultar TestSafeHitbox para que la parte de prueba
--- tenga efecto; crearla por sí solo no vuelve invulnerable al Humanoid.
+-- Reduce y restaura el HumanoidRootPart propio; no modifica los demás jugadores.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local REMOTE_NAME = "TGX_ImmortalityHitbox"
-local SAFE_POSITION = Vector3.new(0, 500, 0)
+local REMOTE_NAME = "TGX_SmallOwnHitbox"
+local MIN_HITBOX_SIZE = Vector3.new(0.1, 0.1, 0.1)
+local REQUEST_COOLDOWN = 0.25
+
 local lastRequest = {}
+local originalSizes = setmetatable({}, {__mode = "k"})
 
 local remote = ReplicatedStorage:FindFirstChild(REMOTE_NAME)
 if remote and not remote:IsA("RemoteEvent") then
@@ -20,31 +22,32 @@ if not remote then
 	remote.Parent = ReplicatedStorage
 end
 
-local function setHitbox(character, enabled)
-	local previous = character:FindFirstChild("TestSafeHitbox")
-	if not enabled then
-		if previous then previous:Destroy() end
-		return
-	end
-	if previous then previous:Destroy() end
+local function setOwnHitbox(player, enabled)
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not rootPart or not rootPart:IsA("BasePart") then return false end
 
-	local hitbox = Instance.new("Part")
-	hitbox.Name = "TestSafeHitbox"
-	hitbox.Size = Vector3.new(4, 6, 4)
-	hitbox.CFrame = CFrame.new(SAFE_POSITION)
-	hitbox.Transparency = 1
-	hitbox.Anchored = true
-	hitbox.CanCollide = false
-	hitbox.CanTouch = false
-	hitbox.CanQuery = true
-	hitbox.Parent = character
+	if enabled then
+		if originalSizes[character] == nil then
+			originalSizes[character] = rootPart.Size
+		end
+		rootPart.Size = MIN_HITBOX_SIZE
+	else
+		local originalSize = originalSizes[character]
+		if originalSize then
+			rootPart.Size = originalSize
+			originalSizes[character] = nil
+		end
+	end
+	return true
 end
 
 local function bindPlayer(player)
 	player.CharacterAdded:Connect(function(character)
-		if player:GetAttribute("ImmortalityHitboxEnabled") == true
+		local rootPart = character:WaitForChild("HumanoidRootPart", 10)
+		if rootPart and player:GetAttribute("SmallOwnHitboxEnabled") == true
 			and player:GetAttribute("CanUseImmortalityHitbox") == true then
-			setHitbox(character, true)
+			setOwnHitbox(player, true)
 		end
 	end)
 end
@@ -59,11 +62,10 @@ remote.OnServerEvent:Connect(function(player, enabled)
 	if player:GetAttribute("CanUseImmortalityHitbox") ~= true then return end
 
 	local now = os.clock()
-	if now - (lastRequest[player] or 0) < 0.25 then return end
+	if now - (lastRequest[player] or 0) < REQUEST_COOLDOWN then return end
 	lastRequest[player] = now
-	player:SetAttribute("ImmortalityHitboxEnabled", enabled)
-	local character = player.Character
-	if character then setHitbox(character, enabled) end
+	player:SetAttribute("SmallOwnHitboxEnabled", enabled)
+	setOwnHitbox(player, enabled)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
