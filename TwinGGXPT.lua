@@ -13,7 +13,11 @@ local GuiService = game:GetService("GuiService")
 local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
-local LocalPlayer = Players.LocalPlayer
+if not player then
+	warn("[TwinGGXPT] Este código requiere un LocalScript ejecutándose en el cliente, dentro de StarterPlayerScripts.")
+	return
+end
+local LocalPlayer = player
 local playerGui = player:WaitForChild("PlayerGui")
 
 local CONFIG = {
@@ -408,8 +412,9 @@ end
 
 gui = create("ScreenGui", {
 	Name = "TwinGGXPT",
-	Enabled = false,
+	Enabled = true,
 	IgnoreGuiInset = true,
+	DisplayOrder = 100,
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
@@ -1735,7 +1740,11 @@ Players.PlayerRemoving:Connect(function(leaving)
 	if state.selectedTarget == leaving then state.selectedTarget = nil end
 end)
 
-refreshPage()
+gui.Enabled = true
+local pageRendered, pageRenderError = pcall(refreshPage)
+if not pageRendered then
+	warn("[TwinGGXPT] Error al dibujar la página inicial: " .. tostring(pageRenderError))
+end
 
 
 -- Inicio directo de Twin GG XPT, sin pantalla ni validación de key.
