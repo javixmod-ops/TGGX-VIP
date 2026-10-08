@@ -1,5 +1,6 @@
 -- TWIN GG XPT · LOCAL SOLO · HITBOX INTEGRADA
 -- Colócalo en StarterPlayer > StarterPlayerScripts.
+-- Para la lista ONLINE, instala TGGX_MenuPresence.server.lua en ServerScriptService.
 -- Diseñado como mecánica de tu propio shooter. No modifica impactos ni contiene Silent Aimbot.
 -- Sin compras, claves ni GUI externa de Hitbox.
 
@@ -616,19 +617,203 @@ local title = create("TextLabel", {
 	ZIndex = 12,
 }, topbar)
 
-local onlineStatus = create("TextLabel", {
+local onlineStatus = create("TextButton", {
+	Active = true,
+	AutoButtonColor = false,
 	BackgroundColor3 = Color3.fromRGB(13, 45, 54),
 	BorderSizePixel = 0,
 	Font = Enum.Font.RobotoMono,
 	Position = UDim2.new(1, -105, 0, 15),
 	Size = UDim2.fromOffset(91, 18),
-	Text = "● ONLINE",
+	Text = "● ONLINE · 0",
 	TextColor3 = Color3.fromRGB(94, 239, 184),
 	TextSize = 7,
 	ZIndex = 12,
 }, topbar)
 corner(onlineStatus, 9)
 stroke(onlineStatus, Color3.fromRGB(94, 239, 184), 1, 0.68)
+
+local presencePanel = create("Frame", {
+	AnchorPoint = Vector2.new(1, 0),
+	BackgroundColor3 = Color3.fromRGB(10, 17, 29),
+	BorderSizePixel = 0,
+	Position = UDim2.new(1, -10, 0, 53),
+	Size = UDim2.fromOffset(232, 220),
+	Visible = false,
+	ZIndex = 40,
+}, root)
+corner(presencePanel, 12)
+stroke(presencePanel, ACCENT, 1.2, 0.2)
+
+local presenceTitle = create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamBold,
+	Position = UDim2.fromOffset(12, 9),
+	Size = UDim2.new(1, -48, 0, 18),
+	Text = "USUARIOS CON EL MENÚ (0)",
+	TextColor3 = WHITE,
+	TextSize = 9,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 41,
+}, presencePanel)
+
+local presenceClose = create("TextButton", {
+	AutoButtonColor = false,
+	BackgroundColor3 = SURFACE_2,
+	BorderSizePixel = 0,
+	Position = UDim2.new(1, -30, 0, 7),
+	Size = UDim2.fromOffset(22, 22),
+	Text = "×",
+	TextColor3 = MUTED,
+	TextSize = 16,
+	ZIndex = 42,
+}, presencePanel)
+corner(presenceClose, 7)
+
+local presenceState = create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.RobotoMono,
+	Position = UDim2.fromOffset(12, 34),
+	Size = UDim2.new(1, -24, 0, 20),
+	Text = "ESPERANDO EL SERVIDOR DE PRESENCIA",
+	TextColor3 = MUTED,
+	TextSize = 7,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 41,
+}, presencePanel)
+
+local presenceList = create("ScrollingFrame", {
+	Active = true,
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	CanvasSize = UDim2.fromOffset(0, 0),
+	Position = UDim2.fromOffset(9, 58),
+	ScrollBarImageColor3 = ACCENT,
+	ScrollBarThickness = 4,
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	Size = UDim2.new(1, -18, 1, -67),
+	Visible = false,
+	ZIndex = 42,
+}, presencePanel)
+local presenceListLayout = create("UIListLayout", {
+	Padding = UDim.new(0, 4),
+	SortOrder = Enum.SortOrder.LayoutOrder,
+}, presenceList)
+presenceListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	presenceList.CanvasSize = UDim2.fromOffset(0, presenceListLayout.AbsoluteContentSize.Y + 4)
+end)
+
+local presenceRows = {}
+local presenceRemote = nil
+
+local function renderPresenceUsers(users)
+	if type(users) ~= "table" then return end
+	local count, seen = 0, {}
+	for index, entry in ipairs(users) do
+		local userId = type(entry) == "table" and tonumber(entry.userId)
+		if userId and userId > 0 then
+			count += 1
+			seen[userId] = true
+			local row = presenceRows[userId]
+			if not row then
+				local frame = create("Frame", {
+					BackgroundColor3 = SURFACE_2,
+					BackgroundTransparency = 0.12,
+					BorderSizePixel = 0,
+					LayoutOrder = index,
+					Size = UDim2.new(1, -4, 0, 40),
+					ZIndex = 43,
+				}, presenceList)
+				corner(frame, 8)
+				local avatar = create("ImageLabel", {
+					BackgroundColor3 = Color3.fromRGB(24, 34, 48),
+					BorderSizePixel = 0,
+					Position = UDim2.fromOffset(6, 6),
+					Size = UDim2.fromOffset(28, 28),
+					ZIndex = 44,
+				}, frame)
+				corner(avatar, 999)
+				stroke(avatar, ACCENT, 1, 0.45)
+				local displayName = create("TextLabel", {
+					BackgroundTransparency = 1,
+					Font = Enum.Font.GothamBold,
+					Position = UDim2.fromOffset(42, 5),
+					Size = UDim2.new(1, -49, 0, 15),
+					TextColor3 = WHITE,
+					TextSize = 10,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					ZIndex = 44,
+				}, frame)
+				local userName = create("TextLabel", {
+					BackgroundTransparency = 1,
+					Font = Enum.Font.RobotoMono,
+					Position = UDim2.fromOffset(42, 20),
+					Size = UDim2.new(1, -49, 0, 13),
+					TextColor3 = MUTED,
+					TextSize = 8,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					ZIndex = 44,
+				}, frame)
+				row = {frame = frame, avatar = avatar, displayName = displayName, userName = userName}
+				presenceRows[userId] = row
+				task.spawn(function()
+					local ok, image = pcall(function()
+						return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+					end)
+					if ok and row.avatar.Parent then row.avatar.Image = image end
+				end)
+			end
+			row.frame.LayoutOrder = index
+			row.frame.Visible = true
+			row.displayName.Text = tostring(entry.displayName or entry.name or "Jugador")
+			row.userName.Text = entry.name and ("@" .. tostring(entry.name)) or ""
+		end
+	end
+	for userId, row in pairs(presenceRows) do
+		if not seen[userId] then row.frame.Visible = false end
+	end
+	presenceTitle.Text = "USUARIOS CON EL MENÚ (" .. count .. ")"
+	onlineStatus.Text = "● ONLINE · " .. count
+	presenceState.Text = count == 0 and "NO HAY USUARIOS ACTIVOS" or "ACTIVOS AHORA · LISTA EN TIEMPO REAL"
+	presenceState.TextColor3 = count == 0 and MUTED or GREEN
+	presenceList.Visible = count > 0
+end
+
+local function attachPresenceRemote(candidate)
+	if not candidate or not candidate:IsA("RemoteEvent") or presenceRemote == candidate then return end
+	presenceRemote = candidate
+	presenceState.Text = "CONECTADO · ACTUALIZANDO..."
+	candidate.OnClientEvent:Connect(renderPresenceUsers)
+	candidate:FireServer("Heartbeat")
+	task.spawn(function()
+		while gui.Parent and candidate.Parent and presenceRemote == candidate do
+			task.wait(10)
+			if gui.Parent and candidate.Parent and presenceRemote == candidate then
+				candidate:FireServer("Heartbeat")
+			end
+		end
+	end)
+end
+
+local existingPresenceRemote = ReplicatedStorage:FindFirstChild("TGGX_MenuPresence")
+if existingPresenceRemote then attachPresenceRemote(existingPresenceRemote) end
+ReplicatedStorage.ChildAdded:Connect(function(child)
+	if child.Name == "TGGX_MenuPresence" then attachPresenceRemote(child) end
+end)
+
+onlineStatus.Activated:Connect(function()
+	presencePanel.Visible = not presencePanel.Visible
+	if presencePanel.Visible then
+		if presenceRemote then
+			presenceState.Text = "ACTUALIZANDO LISTA..."
+			presenceRemote:FireServer("Refresh")
+		else
+			presenceState.Text = "FALTA TGGX_MENUPRESENCE.SERVER.LUA"
+			presenceState.TextColor3 = RED
+		end
+	end
+end)
+presenceClose.Activated:Connect(function() presencePanel.Visible = false end)
 
 local side = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(12, 18, 28),
