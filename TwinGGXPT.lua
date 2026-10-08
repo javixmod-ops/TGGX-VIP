@@ -11,7 +11,6 @@ local Stats = game:GetService("Stats")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local Lighting = game:GetService("Lighting")
-local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
@@ -128,8 +127,6 @@ local translations = {
 
 local old = playerGui:FindFirstChild("TwinGGXPT")
 if old then old:Destroy() end
-local oldIntro = playerGui:FindFirstChild("TwinGGXPTIntro")
-if oldIntro then oldIntro:Destroy() end
 
 local function t(key)
 	return translations[state.language][key] or key
@@ -1761,103 +1758,8 @@ end)
 refreshPage()
 
 
--- Intro a pantalla completa; el menú solo se habilita cuando termina la secuencia.
-local function playIntroThenShowMenu()
-	local introGui = nil
-	local coreGuiStates = {}
-	local topbarWasEnabled = true
-	local topbarChanged = false
-	local menuOpened = false
-	local function finishIntro()
-		if menuOpened then return end
-		menuOpened = true
-		for coreType, wasEnabled in pairs(coreGuiStates) do
-			pcall(function() StarterGui:SetCoreGuiEnabled(coreType, wasEnabled) end)
-		end
-		if topbarChanged then
-			for attempt = 1, 8 do
-				local setOk = pcall(function() StarterGui:SetCore("TopbarEnabled", topbarWasEnabled) end)
-				if setOk then break end
-				task.wait(0.25)
-			end
-		end
-		if introGui and introGui.Parent then pcall(function() introGui:Destroy() end) end
-		gui.Enabled = true
-	end
-	-- Si una animación o CoreGui no responde, no deja el menú bloqueado indefinidamente.
-	task.delay(15, finishIntro)
-	local ok, introError = pcall(function()
-		introGui = create("ScreenGui", {
-			Name = "TwinGGXPTIntro",
-			DisplayOrder = 10000,
-			IgnoreGuiInset = true,
-			ResetOnSpawn = false,
-			ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		}, playerGui)
-		local backdrop = create("Frame", {
-			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-			BackgroundTransparency = 0,
-			BorderSizePixel = 0,
-			Size = UDim2.fromScale(1, 1),
-			ZIndex = 10000,
-		}, introGui)
-		local introText = create("TextLabel", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBlack,
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.new(1, -36, 0, 96),
-			Text = "",
-			TextColor3 = Color3.fromRGB(255, 255, 255),
-			TextSize = 34,
-			TextTransparency = 1,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			ZIndex = 10001,
-		}, introGui)
-
-		local gotTopbarState, topbarState = pcall(function() return StarterGui:GetCore("TopbarEnabled") end)
-		if gotTopbarState and type(topbarState) == "boolean" then topbarWasEnabled = topbarState end
-		for _, coreType in ipairs(Enum.CoreGuiType:GetEnumItems()) do
-			if coreType.Name ~= "All" then
-				local wasEnabled = true
-				pcall(function() wasEnabled = StarterGui:GetCoreGuiEnabled(coreType) end)
-				coreGuiStates[coreType] = wasEnabled
-				pcall(function() StarterGui:SetCoreGuiEnabled(coreType, false) end)
-			end
-		end
-		for attempt = 1, 8 do
-			local setOk = pcall(function() StarterGui:SetCore("TopbarEnabled", false) end)
-			if setOk then topbarChanged = true; break end
-			task.wait(0.25)
-		end
-
-		local function showLine(text)
-			introText.Text = text
-			introText.TextTransparency = 1
-			local fadeIn = TweenService:Create(introText, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
-			fadeIn:Play()
-			fadeIn.Completed:Wait()
-			task.wait(0.9)
-			local fadeOut = TweenService:Create(introText, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
-			fadeOut:Play()
-			fadeOut.Completed:Wait()
-		end
-
-		showLine("TGGX    VIP")
-		showLine("Créditos: JxVI mods")
-		showLine("Bienvenido: " .. player.Name)
-		local backdropFade = TweenService:Create(backdrop, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {BackgroundTransparency = 1})
-		backdropFade:Play()
-		backdropFade.Completed:Wait()
-	end)
-
-	if not ok then warn("TGGX VIP intro: " .. tostring(introError)) end
-	finishIntro()
-end
-
-task.spawn(playIntroThenShowMenu)
+-- Arranque directo: mostrar el mod menú sin pantalla de intro ni esperas.
+gui.Enabled = true
 
 -- Bucle principal del expansor de Hitbox aportado por el usuario.
 -- La GUI solo actualiza isHitboxActive, hitboxSize y showVisualBox.
