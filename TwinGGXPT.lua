@@ -46,7 +46,7 @@ local state = {
 	betaTarget = nil,
 	hitboxEnabled = true,
 	hitboxVisible = true,
-	immortalityHitbox = false,
+	smallOwnHitbox = false,
 	showOwnHitbox = false,
 	hitboxSize = 10,
 	hitboxServerConfirmed = false,
@@ -73,7 +73,7 @@ local translations = {
 		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", language = "IDIOMA",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO",
-		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", immortalityHitbox = "HITBOX INMORTALIDAD", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
+		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
 		speed = "VELOCIDAD", resetSpeed = "RESET VELOCIDAD", superJump = "SUPER SALTO", resetJump = "RESET SUPER SALTO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 	EN = {
@@ -85,7 +85,7 @@ local translations = {
 		visible = "SHOW FOV", radius = "FOV RADIUS", language = "LANGUAGE",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
 		noTarget = "NO TARGET", target = "TARGET",
-		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", immortalityHitbox = "IMMORTALITY HITBOX", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
+		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
 		speed = "SPEED", resetSpeed = "RESET SPEED", superJump = "SUPER JUMP", resetJump = "RESET JUMP", noclip = "NOCLIP", antiLag = "LOW GRAPHICS",
 	},
 	PT = {
@@ -97,7 +97,7 @@ local translations = {
 		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", language = "IDIOMA",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
 		noTarget = "SEM ALVO", target = "ALVO",
-		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", immortalityHitbox = "HITBOX IMORTALIDADE", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
+		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
 		speed = "VELOCIDADE", resetSpeed = "RESET VELOCIDADE", superJump = "SUPER PULO", resetJump = "RESET PULO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 }
@@ -144,7 +144,7 @@ local GREEN = Color3.fromRGB(59, 199, 137)
 local RED = Color3.fromRGB(216, 75, 94)
 
 local hitboxRemote = nil
-local immortalityHitboxRemoteName = "TGX_ImmortalityHitbox"
+local smallOwnHitboxRemoteName = "TGX_SmallOwnHitbox"
 local updateOwnHitboxVisual
 local hitboxStatusLabel = nil
 local hitboxStatus = "HITBOX EXPANDER ACTIVADA"
@@ -244,16 +244,16 @@ local function queueHitboxSync()
 	end)
 end
 
-local function requestImmortalityHitbox(enabled)
-	local remote = ReplicatedStorage:FindFirstChild(immortalityHitboxRemoteName)
+local function requestSmallOwnHitbox(enabled)
+	local remote = ReplicatedStorage:FindFirstChild(smallOwnHitboxRemoteName)
 	if not remote or not remote:IsA("RemoteEvent") then
-		state.immortalityHitbox = false
-		setHitboxStatus("FALTA TGX_ImmortalityHitbox EN EL SERVIDOR", RED)
+		state.smallOwnHitbox = false
+		setHitboxStatus("FALTA TGX_SmallOwnHitbox EN EL SERVIDOR", RED)
 		return
 	end
-	state.immortalityHitbox = enabled == true
-	remote:FireServer(state.immortalityHitbox)
-	setHitboxStatus(state.immortalityHitbox and "HITBOX INMORTALIDAD SOLICITADA" or "HITBOX INMORTALIDAD DESACTIVADA", state.immortalityHitbox and GREEN or MUTED)
+	state.smallOwnHitbox = enabled == true
+	remote:FireServer(state.smallOwnHitbox)
+	setHitboxStatus(state.smallOwnHitbox and "SOLICITUD DE HITBOX MÍNIMA ENVIADA" or "HITBOX MÍNIMA DESACTIVADA", state.smallOwnHitbox and GREEN or MUTED)
 end
 
 -- El Script de servidor puede iniciarse después de la GUI. Esperar el RemoteEvent
@@ -857,7 +857,7 @@ local function renderHitboxPage()
 		showVisualBox = value
 		setHitboxStatus(value and "CUADRADO DE HITBOX VISIBLE" or "CUADRADO DE HITBOX OCULTO", value and ACCENT or MUTED)
 	end)
-	toggle(page, 133, t("immortalityHitbox"), function() return state.immortalityHitbox end, function(value) requestImmortalityHitbox(value) end)
+	toggle(page, 133, t("smallOwnHitbox"), function() return state.smallOwnHitbox end, function(value) requestSmallOwnHitbox(value) end)
 	toggle(page, 166, t("showOwnHitbox"), function() return state.showOwnHitbox end, function(value)
 		state.showOwnHitbox = value
 		updateOwnHitboxVisual()
