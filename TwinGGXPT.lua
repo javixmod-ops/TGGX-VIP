@@ -15,6 +15,7 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local gui
 
 local CONFIG = {
 	MaxFovRadius = 360,
@@ -1755,11 +1756,10 @@ Players.PlayerRemoving:Connect(function(leaving)
 	if state.selectedTarget == leaving then state.selectedTarget = nil end
 end)
 
-refreshPage()
-
-
--- Arranque directo: mostrar el mod menú sin pantalla de intro ni esperas.
+-- Abrir el menú aun si alguna página falla al dibujarse; el error queda en Output.
+local pageBuildOk, pageBuildError = pcall(refreshPage)
 gui.Enabled = true
+if not pageBuildOk then warn("TGGX VIP: error construyendo las páginas: " .. tostring(pageBuildError)) end
 
 -- Bucle principal del expansor de Hitbox aportado por el usuario.
 -- La GUI solo actualiza isHitboxActive, hitboxSize y showVisualBox.
