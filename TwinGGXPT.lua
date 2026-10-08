@@ -47,6 +47,7 @@ local state = {
 	hitboxEnabled = true,
 	hitboxVisible = true,
 	smallOwnHitbox = false,
+	smallOwnHitboxSize = 0.1,
 	showOwnHitbox = false,
 	hitboxSize = 10,
 	hitboxServerConfirmed = false,
@@ -73,7 +74,7 @@ local translations = {
 		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", language = "IDIOMA",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO",
-		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
+		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMAÑO PROPIO", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
 		speed = "VELOCIDAD", resetSpeed = "RESET VELOCIDAD", superJump = "SUPER SALTO", resetJump = "RESET SUPER SALTO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 	EN = {
@@ -85,7 +86,7 @@ local translations = {
 		visible = "SHOW FOV", radius = "FOV RADIUS", language = "LANGUAGE",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
 		noTarget = "NO TARGET", target = "TARGET",
-		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
+		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", ownHitboxSize = "OWN HITBOX SIZE", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
 		speed = "SPEED", resetSpeed = "RESET SPEED", superJump = "SUPER JUMP", resetJump = "RESET JUMP", noclip = "NOCLIP", antiLag = "LOW GRAPHICS",
 	},
 	PT = {
@@ -97,7 +98,7 @@ local translations = {
 		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", language = "IDIOMA",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
 		noTarget = "SEM ALVO", target = "ALVO",
-		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
+		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMANHO PRÓPRIO", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
 		speed = "VELOCIDADE", resetSpeed = "RESET VELOCIDADE", superJump = "SUPER PULO", resetJump = "RESET PULO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 }
@@ -144,8 +145,8 @@ local GREEN = Color3.fromRGB(59, 199, 137)
 local RED = Color3.fromRGB(216, 75, 94)
 
 local hitboxRemote = nil
-local smallOwnHitboxRemoteName = "TGX_SmallOwnHitbox"
 local updateOwnHitboxVisual
+local smallOwnHitboxSizeLabel
 local hitboxStatusLabel = nil
 local hitboxStatus = "HITBOX EXPANDER ACTIVADA"
 local hitboxStatusColor = MUTED
@@ -161,7 +162,9 @@ local hitboxAdjustToken = 0
 local beginHitboxAdjustment
 local finishHitboxAdjustment
 
-local LOCAL_MIN_HITBOX_SIZE = Vector3.new(0.1, 0.1, 0.1)
+local MIN_OWN_HITBOX_SIZE = 0.1
+local MAX_OWN_HITBOX_SIZE = 3.0
+local OWN_HITBOX_SIZE_STEP = 0.1
 local localOwnHitboxOriginalSizes = setmetatable({}, {__mode = "k"})
 
 local function updateLocalOwnHitbox(enabled)
@@ -173,7 +176,8 @@ local function updateLocalOwnHitbox(enabled)
 		if localOwnHitboxOriginalSizes[character] == nil then
 			localOwnHitboxOriginalSizes[character] = rootPart.Size
 		end
-		rootPart.Size = LOCAL_MIN_HITBOX_SIZE
+		local size = state.smallOwnHitboxSize
+		rootPart.Size = Vector3.new(size, size, size)
 	else
 		local originalSize = localOwnHitboxOriginalSizes[character]
 		if originalSize then
@@ -266,16 +270,16 @@ local function queueHitboxSync()
 	end)
 end
 
-local function requestSmallOwnHitbox(enabled)
-	state.smallOwnHitbox = enabled == true
-	updateLocalOwnHitbox(state.smallOwnHitbox)
-	local remote = ReplicatedStorage:FindFirstChild(smallOwnHitboxRemoteName)
-	if not remote or not remote:IsA("RemoteEvent") then
-		setHitboxStatus(state.smallOwnHitbox and "HITBOX MÍNIMA LOCAL · SERVIDOR NO DETECTADO" or "HITBOX MÍNIMA DESACTIVADA", state.smallOwnHitbox and ACCENT or MUTED)
-		return
+local function setSmallOwnHitboxSize(delta)
+	state.smallOwnHitboxSize = math.clamp(
+		math.round((state.smallOwnHitboxSize + delta) * 10) / 10,
+		MIN_OWN_HITBOX_SIZE,
+		MAX_OWN_HITBOX_SIZE
+	)
+	if state.smallOwnHitbox then updateLocalOwnHitbox(true) end
+	if smallOwnHitboxSizeLabel then
+		smallOwnHitboxSizeLabel.Text = t("ownHitboxSize") .. ": " .. string.format("%.1f studs", state.smallOwnHitboxSize)
 	end
-	remote:FireServer(state.smallOwnHitbox)
-	setHitboxStatus(state.smallOwnHitbox and "HITBOX MÍNIMA LOCAL · SOLICITUD ENVIADA" or "HITBOX MÍNIMA DESACTIVADA", state.smallOwnHitbox and GREEN or MUTED)
 end
 
 -- El Script de servidor puede iniciarse después de la GUI. Esperar el RemoteEvent
@@ -473,8 +477,8 @@ local root = create("Frame", {
 	BackgroundColor3 = SURFACE,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
-	Position = UDim2.new(0.5, -228, 0.5, -172),
-	Size = UDim2.fromOffset(456, 344),
+	Position = UDim2.new(0.5, -228, 0.5, -190),
+	Size = UDim2.fromOffset(456, 380),
 	ZIndex = 10,
 }, gui)
 corner(root, 20)
@@ -879,21 +883,38 @@ local function renderHitboxPage()
 		showVisualBox = value
 		setHitboxStatus(value and "CUADRADO DE HITBOX VISIBLE" or "CUADRADO DE HITBOX OCULTO", value and ACCENT or MUTED)
 	end)
-	toggle(page, 133, t("smallOwnHitbox"), function() return state.smallOwnHitbox end, function(value) requestSmallOwnHitbox(value) end)
+	toggle(page, 133, t("smallOwnHitbox"), function() return state.smallOwnHitbox end, function(value)
+		state.smallOwnHitbox = value == true
+		updateLocalOwnHitbox(state.smallOwnHitbox)
+		setHitboxStatus(state.smallOwnHitbox and "HITBOX MÍNIMA LOCAL ACTIVA" or "HITBOX MÍNIMA DESACTIVADA", state.smallOwnHitbox and GREEN or MUTED)
+	end)
 	toggle(page, 166, t("showOwnHitbox"), function() return state.showOwnHitbox end, function(value)
 		state.showOwnHitbox = value
 		updateOwnHitboxVisual()
 		setHitboxStatus(value and "MOSTRANDO SOLO TU HITBOX" or "VISTA DE TU HITBOX DESACTIVADA", value and ACCENT or MUTED)
 	end)
 
-	label(page, t("hitboxSize"), UDim2.fromOffset(16, 201), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
-	local valueText = label(page, string.format("%.1f studs", state.hitboxSize), UDim2.new(1, -108, 0, 201), UDim2.fromOffset(92, 18), Enum.Font.RobotoMono, ACCENT, 9)
+	smallOwnHitboxSizeLabel = label(page, t("ownHitboxSize") .. ": " .. string.format("%.1f studs", state.smallOwnHitboxSize), UDim2.fromOffset(16, 201), UDim2.new(1, -112, 0, 24), Enum.Font.GothamMedium, WHITE, 10)
+	local function makeOwnSizeButton(text, xOffset, delta)
+		local button = create("TextButton", {
+			Active = true, AutoButtonColor = false, BackgroundColor3 = SURFACE_2, BorderSizePixel = 0,
+			Position = UDim2.new(1, xOffset, 0, 199), Size = UDim2.fromOffset(34, 26),
+			Font = Enum.Font.GothamBold, Text = text, TextColor3 = WHITE, TextSize = 14, ZIndex = 13,
+		}, page)
+		corner(button, 7)
+		button.Activated:Connect(function() setSmallOwnHitboxSize(delta) end)
+	end
+	makeOwnSizeButton("−", -96, -OWN_HITBOX_SIZE_STEP)
+	makeOwnSizeButton("+", -52, OWN_HITBOX_SIZE_STEP)
+
+	label(page, t("hitboxSize"), UDim2.fromOffset(16, 235), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+	local valueText = label(page, string.format("%.1f studs", state.hitboxSize), UDim2.new(1, -108, 0, 235), UDim2.fromOffset(92, 18), Enum.Font.RobotoMono, ACCENT, 9)
 	valueText.TextXAlignment = Enum.TextXAlignment.Right
 	local bar = create("Frame", {
 		Active = true,
 		BackgroundColor3 = Color3.fromRGB(56, 70, 92),
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(16, 231),
+		Position = UDim2.fromOffset(16, 265),
 		Size = UDim2.new(1, -32, 0, 8),
 		ZIndex = 12,
 	}, page)
@@ -930,7 +951,7 @@ local function renderHitboxPage()
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then changing = false end
 	end)
 
-	local statusPanel = create("Frame", {BackgroundColor3 = SURFACE_2, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 250), Size = UDim2.new(1, -32, 0, 39), ZIndex = 12}, page)
+	local statusPanel = create("Frame", {BackgroundColor3 = SURFACE_2, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 283), Size = UDim2.new(1, -32, 0, 39), ZIndex = 12}, page)
 	corner(statusPanel, 9)
 	label(statusPanel, "ESTADO DE HITBOX", UDim2.fromOffset(10, 7), UDim2.new(1, -20, 0, 12), Enum.Font.RobotoMono, MUTED, 7)
 	hitboxStatusLabel = label(statusPanel, hitboxStatus, UDim2.fromOffset(10, 19), UDim2.new(1, -20, 0, 16), Enum.Font.GothamBold, hitboxStatusColor, 8)
@@ -1227,7 +1248,7 @@ end
 makeDraggable(topbar, root)
 makeDraggable(hud, hud)
 
-local fullPanelSize = UDim2.fromOffset(456, 344)
+local fullPanelSize = UDim2.fromOffset(456, 380)
 local miniPanelSize = UDim2.fromOffset(46, 46)
 local panelAnimating = false
 local panelMinimized = false
