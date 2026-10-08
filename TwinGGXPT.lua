@@ -491,7 +491,7 @@ local menuBackground = create("ImageLabel", {
 	BorderSizePixel = 0,
 	Position = UDim2.fromScale(0, 0),
 	Size = UDim2.fromScale(1, 1),
-	Image = "rbxassetid://135136288920049",
+	Image = "rbxassetid://105104843236302",
 	ImageTransparency = 0,
 	ScaleType = Enum.ScaleType.Crop,
 	ZIndex = 11,
@@ -499,7 +499,7 @@ local menuBackground = create("ImageLabel", {
 
 task.delay(8, function()
 	if menuBackground.Parent and not menuBackground.IsLoaded then
-		warn("El fondo 135136288920049 no cargó. Revisa en Output si la experiencia tiene permiso para usar el decal.")
+		warn("El fondo 105104843236302 no cargó. Revisa en Output si la experiencia tiene permiso para usar la imagen.")
 	end
 end)
 
