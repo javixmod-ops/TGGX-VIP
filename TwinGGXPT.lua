@@ -11,6 +11,7 @@ local Stats = game:GetService("Stats")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
@@ -59,7 +60,29 @@ local state = {
 	playerJump = 50,
 	noclip = false,
 	antiLag = false,
+	musicVolume = 0.5,
+	currentMusicId = "",
+	currentMusicName = "",
 }
+
+-- El Sound se crea desde este LocalScript y vive en SoundService solo en este cliente.
+local previousMusic = SoundService:FindFirstChild("TwinGGXPT_LocalMusic")
+if previousMusic then
+	if previousMusic:IsA("Sound") then previousMusic:Stop() end
+	previousMusic:Destroy()
+end
+local localMusicSound = Instance.new("Sound")
+localMusicSound.Name = "TwinGGXPT_LocalMusic"
+localMusicSound.Volume = state.musicVolume
+localMusicSound.Looped = false
+localMusicSound.Parent = SoundService
+local musicPlayButton
+local function updateMusicPlayButton()
+	if musicPlayButton and musicPlayButton.Parent then
+		musicPlayButton.Text = localMusicSound.IsPlaying and "DETENER MÚSICA" or "PONER MÚSICA"
+	end
+end
+localMusicSound.Ended:Connect(updateMusicPlayButton)
 
 -- Variables del expansor LocalScript aportado. La pestaña HITBOX las controla directamente.
 local isHitboxActive = true
@@ -71,7 +94,7 @@ local restoreLocalHitboxExpander
 local translations = {
 	ES = {
 		title = "TWIN GG XPT",
-		pageAim = "AIMBOT", pageEps = "EPS", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC",
+		pageAim = "AIMBOT", pageEps = "EPS", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MÚSICA",
 			aimAssist = "AIMBOT ÚNICO", notifications = "NOTIFI UI", smoothAim = "SEGUIMIENTO SUAVE",
 		line = "LÍNEAS EPS", box = "CUADRADO EPS", skeleton = "EPS ESQUELETO",
 		health = "EPS VIDA", distance = "EPS METROS", counter = "CONTADOR DE JUGADORES",
@@ -83,7 +106,7 @@ local translations = {
 	},
 	EN = {
 		title = "TWIN GG XPT",
-		pageAim = "AIM ASSIST", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC",
+		pageAim = "AIM ASSIST", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MUSIC",
 			aimAssist = "SINGLE AIM ASSIST", notifications = "UI NOTIFICATIONS", smoothAim = "SMOOTH AIM",
 		line = "ESP LINES", box = "ESP BOX", skeleton = "ESP SKELETON",
 		health = "ESP HEALTH", distance = "ESP DISTANCE", counter = "PLAYER COUNTER",
@@ -95,7 +118,7 @@ local translations = {
 	},
 	PT = {
 		title = "TWIN GG XPT",
-		pageAim = "MIRA", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC",
+		pageAim = "MIRA", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MÚSICA",
 			aimAssist = "MIRA ASSISTIDA ÚNICA", notifications = "NOTIFICAÇÕES UI", smoothAim = "RASTREAMENTO SUAVE",
 		line = "LINHAS ESP", box = "QUADRO ESP", skeleton = "ESQUELETO ESP",
 		health = "VIDA ESP", distance = "DISTÂNCIA ESP", counter = "CONTADOR DE JOGADORES",
@@ -1234,6 +1257,244 @@ local function renderMiscPage()
 	end)
 end
 
+-- IDs de audio del Creator Store mostrados gratuitos/publicados por el API oficial
+-- el 2026-10-08; permisos, moderación o disponibilidad pueden cambiar después.
+-- Títulos abreviados para que quepan en la lista.
+local MUSIC_PRESETS = {
+	{title = "Relaxed Scene", id = "1848354536"},
+	{title = "Raining Tacos", id = "142376088"},
+	{title = "Life in an Elevator", id = "1841647093"},
+	{title = "Scary Background Music", id = "134959834418523"},
+	{title = "Tender Static · Rhodes y bajo", id = "139132289200391"},
+	{title = "Morning Mood · Peer Gynt", id = "1846088038"},
+	{title = "Ghost Protocol", id = "140658568629873"},
+	{title = "Scary Horror Cinematic", id = "138890398994853"},
+	{title = "Town Talk", id = "1845756489"},
+	{title = "Winding Down · LoFi", id = "140722099430139"},
+}
+
+local function renderMusicPage()
+	local page = makePage("MUSIC")
+	sectionTitle(page, t("pageMusic"), "AUDIO LOCAL · SOLO TÚ LO ESCUCHAS")
+
+	local playButton = create("TextButton", {
+		AutoButtonColor = false,
+		BackgroundColor3 = Color3.fromRGB(39, 119, 91),
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Position = UDim2.fromOffset(16, 61),
+		Size = UDim2.new(1, -32, 0, 27),
+		Text = "PONER MÚSICA",
+		TextColor3 = WHITE,
+		TextSize = 9,
+		ZIndex = 13,
+	}, page)
+	corner(playButton, 8)
+	musicPlayButton = playButton
+
+	local status = label(page, "ELIGE UNA PISTA · SI NO CARGA, REVISA PERMISOS", UDim2.fromOffset(16, 91), UDim2.new(1, -32, 0, 14), Enum.Font.RobotoMono, MUTED, 7)
+	status.Name = "MusicStatus"
+	local playbackRequest = 0
+	local function playMusicNow(displayName)
+		playbackRequest += 1
+		local thisRequest = playbackRequest
+		localMusicSound.Volume = state.musicVolume
+		local ok = pcall(function() localMusicSound:Play() end)
+		if not ok then
+			status.Text = "NO SE PUDO INICIAR · REVISA ID/PERMISOS"
+			status.TextColor3 = RED
+			updateMusicPlayButton()
+			return
+		end
+		status.Text = "CARGANDO: " .. displayName
+		status.TextColor3 = ACCENT
+		updateMusicPlayButton()
+		task.spawn(function()
+			local deadline = os.clock() + 8
+			while playbackRequest == thisRequest and not localMusicSound.IsLoaded and os.clock() < deadline do
+				task.wait(0.1)
+			end
+			if playbackRequest ~= thisRequest or not status.Parent then return end
+			if localMusicSound.IsLoaded and localMusicSound.IsPlaying then
+				status.Text = "REPRODUCIENDO: " .. displayName
+				status.TextColor3 = GREEN
+			else
+				if localMusicSound.IsPlaying then localMusicSound:Stop() end
+				status.Text = "NO CARGÓ · REVISA ID, PERMISOS O DISPONIBILIDAD"
+				status.TextColor3 = RED
+				updateMusicPlayButton()
+			end
+		end)
+	end
+	local volumeText = label(page, "VOLUMEN: " .. math.floor(state.musicVolume * 100 + 0.5) .. "%", UDim2.fromOffset(16, 106), UDim2.new(1, -32, 0, 14), Enum.Font.GothamMedium, WHITE, 9)
+	local volumeBar = create("Frame", {
+		Active = true,
+		BackgroundColor3 = Color3.fromRGB(56, 70, 92),
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(16, 123),
+		Size = UDim2.new(1, -32, 0, 8),
+		ZIndex = 12,
+	}, page)
+	corner(volumeBar, 8)
+	local volumeFill = create("Frame", {
+		BackgroundColor3 = ACCENT,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(state.musicVolume, 1),
+		ZIndex = 13,
+	}, volumeBar)
+	corner(volumeFill, 8)
+	local volumeKnob = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		Position = UDim2.fromScale(state.musicVolume, 0.5),
+		Size = UDim2.fromOffset(16, 16),
+		ZIndex = 14,
+	}, volumeBar)
+	corner(volumeKnob, 16)
+	local draggingVolume = false
+	local function setVolumeFromX(x)
+		if volumeBar.AbsoluteSize.X <= 0 then return end
+		local volume = math.clamp((x - volumeBar.AbsolutePosition.X) / volumeBar.AbsoluteSize.X, 0, 1)
+		state.musicVolume = volume
+		localMusicSound.Volume = volume
+		volumeFill.Size = UDim2.fromScale(volume, 1)
+		volumeKnob.Position = UDim2.fromScale(volume, 0.5)
+		volumeText.Text = "VOLUMEN: " .. math.floor(volume * 100 + 0.5) .. "%"
+	end
+	volumeBar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			draggingVolume = true
+			setVolumeFromX(input.Position.X)
+		end
+	end)
+	local volumeChangedConnection = UserInputService.InputChanged:Connect(function(input)
+		if draggingVolume and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			setVolumeFromX(input.Position.X)
+		end
+	end)
+	local volumeEndedConnection = UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			draggingVolume = false
+		end
+	end)
+	page.Destroying:Connect(function()
+		volumeChangedConnection:Disconnect()
+		volumeEndedConnection:Disconnect()
+	end)
+
+	local idInput = create("TextBox", {
+		BackgroundColor3 = SURFACE_2,
+		BorderSizePixel = 0,
+		ClearTextOnFocus = false,
+		Font = Enum.Font.RobotoMono,
+		PlaceholderColor3 = MUTED,
+		PlaceholderText = "ID numérico del audio de Roblox",
+		Position = UDim2.fromOffset(16, 139),
+		Size = UDim2.new(1, -32, 0, 24),
+		Text = "",
+		TextColor3 = WHITE,
+		TextSize = 8,
+		ZIndex = 13,
+	}, page)
+	corner(idInput, 7)
+	local prepareIdButton = create("TextButton", {
+		AutoButtonColor = false,
+		BackgroundColor3 = SURFACE_2,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Position = UDim2.fromOffset(16, 166),
+		Size = UDim2.fromOffset(104, 22),
+		Text = "REPRODUCIR",
+		TextColor3 = WHITE,
+		TextSize = 8,
+		ZIndex = 13,
+	}, page)
+	corner(prepareIdButton, 7)
+	prepareIdButton.Activated:Connect(function()
+		local assetId = idInput.Text:match("^%s*(%d+)%s*$")
+		if not assetId or assetId == "0" then
+			status.Text = "ESCRIBE UN ID NUMÉRICO VÁLIDO"
+			status.TextColor3 = RED
+			return
+		end
+		playbackRequest += 1
+		if localMusicSound.IsPlaying then localMusicSound:Stop() end
+		state.currentMusicId = assetId
+		state.currentMusicName = "AUDIO PERSONALIZADO"
+		localMusicSound.SoundId = "rbxassetid://" .. assetId
+		localMusicSound.Volume = state.musicVolume
+		status.Text = "ID PREPARADO · PULSA PONER MÚSICA PARA OÍRLO"
+		status.TextColor3 = ACCENT
+		updateMusicPlayButton()
+	end)
+	label(page, "EL ID SE PREPARA AQUÍ; EL BOTÓN SUPERIOR INICIA O DETIENE EL AUDIO.", UDim2.fromOffset(128, 166), UDim2.new(1, -144, 0, 23), Enum.Font.RobotoMono, MUTED, 6)
+
+	local presetTitle = label(page, "LISTA · TOCA UNA PISTA PARA INICIARLA", UDim2.fromOffset(16, 193), UDim2.new(1, -32, 0, 14), Enum.Font.RobotoMono, ACCENT, 7)
+	local presetList = create("ScrollingFrame", {
+		Active = true,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.fromOffset(0, 0),
+		Position = UDim2.fromOffset(16, 210),
+		ScrollBarImageColor3 = ACCENT,
+		ScrollBarThickness = 4,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		Size = UDim2.new(1, -32, 0, 110),
+		ZIndex = 12,
+	}, page)
+	local presetLayout = create("UIListLayout", {
+		Padding = UDim.new(0, 3),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, presetList)
+	presetLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		presetList.CanvasSize = UDim2.fromOffset(0, presetLayout.AbsoluteContentSize.Y + 3)
+	end)
+	for index, track in ipairs(MUSIC_PRESETS) do
+		local trackButton = create("TextButton", {
+			AutoButtonColor = false,
+			BackgroundColor3 = SURFACE_2,
+			BorderSizePixel = 0,
+			Font = Enum.Font.GothamMedium,
+			LayoutOrder = index,
+			Size = UDim2.new(1, -4, 0, 27),
+			Text = "▶  " .. track.title,
+			TextColor3 = WHITE,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextSize = 8,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 13,
+		}, presetList)
+		corner(trackButton, 7)
+		trackButton.Activated:Connect(function()
+			if localMusicSound.IsPlaying then localMusicSound:Stop() end
+			state.currentMusicId = tostring(track.id)
+			state.currentMusicName = track.title
+			localMusicSound.SoundId = "rbxassetid://" .. state.currentMusicId
+			playMusicNow(track.title)
+		end)
+	end
+	if #MUSIC_PRESETS == 0 then
+		presetTitle.Text = "LISTA DE MÚSICA NO DISPONIBLE"
+	end
+
+	playButton.Activated:Connect(function()
+		if localMusicSound.IsPlaying then
+			playbackRequest += 1
+			localMusicSound:Stop()
+			status.Text = "MÚSICA DETENIDA"
+			status.TextColor3 = MUTED
+		elseif state.currentMusicId ~= "" then
+			playMusicNow(state.currentMusicName)
+		else
+			status.Text = "ELIGE UNA PISTA O CARGA UN ID"
+			status.TextColor3 = RED
+		end
+		updateMusicPlayButton()
+	end)
+	updateMusicPlayButton()
+end
+
 local function showPage(pageName)
 	state.page = pageName
 	for name, frame in pairs(pageFrames) do frame.Visible = name == pageName end
@@ -1251,13 +1512,14 @@ refreshPage = function()
 	renderHitboxPage()
 	renderPlayerPage()
 	renderMiscPage()
+	renderMusicPage()
 	showPage(state.page)
 	title.Text = t("title")
-	local navKeys = {AIMBOT = "pageAim", EPS = "pageEps", FOV = "pageFov", HITBOX = "pageHitbox", PLAYER = "pagePlayer", MISC = "pageMisc"}
+	local navKeys = {AIMBOT = "pageAim", EPS = "pageEps", FOV = "pageFov", HITBOX = "pageHitbox", PLAYER = "pagePlayer", MISC = "pageMisc", MUSIC = "pageMusic"}
 	for key, button in pairs(navButtons) do button.Text = t(navKeys[key]) end
 end
 
-local navOrder = {"AIMBOT", "EPS", "FOV", "HITBOX", "PLAYER", "MISC"}
+local navOrder = {"AIMBOT", "EPS", "FOV", "HITBOX", "PLAYER", "MISC", "MUSIC"}
 for index, name in ipairs(navOrder) do
 	local nav = create("TextButton", {
 		AutoButtonColor = false,
