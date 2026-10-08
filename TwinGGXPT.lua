@@ -494,7 +494,7 @@ local menuBackground = create("ImageLabel", {
 	Image = "rbxassetid://135136288920049",
 	ImageTransparency = 0,
 	ScaleType = Enum.ScaleType.Crop,
-	ZIndex = 10,
+	ZIndex = 11,
 }, root)
 
 local rootGlow = create("Frame", {
@@ -510,16 +510,16 @@ corner(rootGlow, 999)
 local topbar = create("Frame", {
 	Active = true,
 	BackgroundColor3 = SURFACE_2,
-	BackgroundTransparency = 0.22,
+	BackgroundTransparency = 0.62,
 	BorderSizePixel = 0,
 	Size = UDim2.new(1, 0, 0, 48),
-	ZIndex = 11,
+	ZIndex = 12,
 }, root)
 corner(topbar, 18)
 gradient(topbar, Color3.fromRGB(31, 52, 80), Color3.fromRGB(16, 26, 44), 0)
 create("Frame", {
 	BackgroundColor3 = SURFACE_2,
-	BackgroundTransparency = 0.22,
+	BackgroundTransparency = 0.62,
 	BorderSizePixel = 0,
 	Position = UDim2.new(0, 0, 1, -18),
 	Size = UDim2.new(1, 0, 0, 18),
@@ -569,22 +569,22 @@ stroke(onlineStatus, Color3.fromRGB(94, 239, 184), 1, 0.68)
 
 local side = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(12, 18, 28),
-	BackgroundTransparency = 0.38,
+	BackgroundTransparency = 0.82,
 	BorderSizePixel = 0,
 	Position = UDim2.fromOffset(0, 48),
 	Size = UDim2.new(0, 116, 1, -48),
-	ZIndex = 11,
+	ZIndex = 12,
 }, root)
 gradient(side, Color3.fromRGB(15, 25, 42), Color3.fromRGB(8, 13, 23), 90)
 
 local content = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(10, 17, 29),
-	BackgroundTransparency = 0.42,
+	BackgroundTransparency = 0.88,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
 	Position = UDim2.fromOffset(116, 48),
 	Size = UDim2.new(1, -116, 1, -48),
-	ZIndex = 11,
+	ZIndex = 12,
 }, root)
 
 local hud = create("Frame", {
