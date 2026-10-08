@@ -13,11 +13,7 @@ local GuiService = game:GetService("GuiService")
 local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
-if not player then
-	warn("[TwinGGXPT] Este código requiere un LocalScript ejecutándose en el cliente, dentro de StarterPlayerScripts.")
-	return
-end
-local LocalPlayer = player
+local LocalPlayer = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local CONFIG = {
@@ -29,8 +25,8 @@ local CONFIG = {
 	AimDirectness = 0.55,
 	AimLeadSeconds = 0.02,
 	AimRetargetCooldown = 0.30,
-	MinCameraZoom = 10,
-	MaxCameraZoom = 500,
+	MinCameraFov = 40,
+	MaxCameraFov = 120,
 	HitboxMinSize = 5,
 	HitboxMaxSize = 50,
 	HitboxDefaultSize = 10,
@@ -42,7 +38,8 @@ local state = {
 	aimEnabled = false,
 	aimNotifications = true,
 	smoothAim = true,
-	cameraZoomMax = 500,
+	cameraFov = 70,
+	cameraFovSet = false,
 	showFov = true,
 	fovRadius = 175,
 	epsLines = false,
@@ -64,25 +61,6 @@ local state = {
 	antiLag = false,
 }
 
-local function setCameraZoomMax(distance)
-	state.cameraZoomMax = math.clamp(math.floor(distance + 0.5), CONFIG.MinCameraZoom, CONFIG.MaxCameraZoom)
-	pcall(function()
-		if player.CameraMode == Enum.CameraMode.LockFirstPerson then
-			player.CameraMode = Enum.CameraMode.Classic
-		end
-		if player.CameraMinZoomDistance > state.cameraZoomMax then
-			player.CameraMinZoomDistance = state.cameraZoomMax
-		end
-		player.CameraMaxZoomDistance = state.cameraZoomMax
-	end)
-end
-
--- Aplicar un alcance inicial amplio; el deslizador permite ajustar el zoom máximo.
-setCameraZoomMax(CONFIG.MaxCameraZoom)
-player.CharacterAdded:Connect(function()
-	task.defer(function() setCameraZoomMax(state.cameraZoomMax) end)
-end)
-
 -- Variables del expansor LocalScript aportado. La pestaña HITBOX las controla directamente.
 local isHitboxActive = true
 local hitboxSize = 10
@@ -97,7 +75,7 @@ local translations = {
 			aimAssist = "AIMBOT ÚNICO", notifications = "NOTIFI UI", smoothAim = "SEGUIMIENTO SUAVE",
 		line = "LÍNEAS EPS", box = "CUADRADO EPS", skeleton = "EPS ESQUELETO",
 		health = "EPS VIDA", distance = "EPS METROS", counter = "CONTADOR DE JUGADORES",
-		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraZoom = "ZOOM MÁXIMO DE CÁMARA", language = "IDIOMA",
+		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraFov = "FOV CÁMARA", language = "IDIOMA",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO", aimLocked = "BLOQUEO A UN OBJETIVO", aimLostWall = "SE DEJÓ DE SEGUIR: DETRÁS DE UNA PARED", aimHint = "OBJETIVO MÁS CERCANO · DENTRO DEL FOV · SIN PAREDES",
 		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMAÑO PROPIO", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
@@ -109,7 +87,7 @@ local translations = {
 			aimAssist = "SINGLE AIM ASSIST", notifications = "UI NOTIFICATIONS", smoothAim = "SMOOTH AIM",
 		line = "ESP LINES", box = "ESP BOX", skeleton = "ESP SKELETON",
 		health = "ESP HEALTH", distance = "ESP DISTANCE", counter = "PLAYER COUNTER",
-		visible = "SHOW FOV", radius = "FOV RADIUS", cameraZoom = "MAX CAMERA ZOOM", language = "LANGUAGE",
+		visible = "SHOW FOV", radius = "FOV RADIUS", cameraFov = "CAMERA FOV", language = "LANGUAGE",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
 		noTarget = "NO TARGET", target = "TARGET", aimLocked = "LOCKED ON TARGET", aimLostWall = "STOPPED: TARGET BEHIND WALL", aimHint = "NEAREST TARGET · INSIDE FOV · NO WALLS",
 		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", ownHitboxSize = "OWN HITBOX SIZE", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
@@ -121,7 +99,7 @@ local translations = {
 			aimAssist = "MIRA ASSISTIDA ÚNICA", notifications = "NOTIFICAÇÕES UI", smoothAim = "RASTREAMENTO SUAVE",
 		line = "LINHAS ESP", box = "QUADRO ESP", skeleton = "ESQUELETO ESP",
 		health = "VIDA ESP", distance = "DISTÂNCIA ESP", counter = "CONTADOR DE JOGADORES",
-		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraZoom = "ZOOM MÁXIMO DA CÂMERA", language = "IDIOMA",
+		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraFov = "FOV DA CÂMERA", language = "IDIOMA",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
 		noTarget = "SEM ALVO", target = "ALVO", aimLocked = "ALVO BLOQUEADO", aimLostWall = "PAROU: ALVO ATRÁS DE UMA PAREDE", aimHint = "ALVO VISÍVEL MAIS PRÓXIMO DENTRO DO FOV",
 		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMANHO PRÓPRIO", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
@@ -328,27 +306,8 @@ ReplicatedStorage.ChildAdded:Connect(function(child)
 end)
 
 local noclipOriginalCollision = setmetatable({}, {__mode = "k"})
-local lowDetailOriginals = setmetatable({}, {__mode = "k"})
+local lowDetailEnabledCache = setmetatable({}, {__mode = "k"})
 local originalGlobalShadows = Lighting.GlobalShadows
-local originalTerrainDecoration = workspace.Terrain.Decoration
-local antiLagWorkspaceConnection = nil
-local antiLagLightingConnection = nil
-
-local function applyLowDetailToInstance(instance)
-	if instance:IsA("BasePart") then
-		if lowDetailOriginals[instance] == nil then
-			lowDetailOriginals[instance] = {property = "CastShadow", value = instance.CastShadow}
-		end
-		instance.CastShadow = false
-	elseif instance:IsA("ParticleEmitter") or instance:IsA("Trail") or instance:IsA("Beam")
-		or instance:IsA("Smoke") or instance:IsA("Fire") or instance:IsA("Sparkles")
-		or instance:IsA("PostEffect") then
-		if lowDetailOriginals[instance] == nil then
-			lowDetailOriginals[instance] = {property = "Enabled", value = instance.Enabled}
-		end
-		instance.Enabled = false
-	end
-end
 
 local function getLocalHumanoid()
 	local character = player.Character
@@ -382,39 +341,25 @@ local function restoreNoclip()
 end
 
 local function setAntiLag(enabled)
-	if enabled then
-		Lighting.GlobalShadows = false
-		workspace.Terrain.Decoration = false
-		for _, instance in ipairs(workspace:GetDescendants()) do applyLowDetailToInstance(instance) end
-		for _, instance in ipairs(Lighting:GetDescendants()) do applyLowDetailToInstance(instance) end
-		if not antiLagWorkspaceConnection then
-			antiLagWorkspaceConnection = workspace.DescendantAdded:Connect(function(instance)
-				if state.antiLag then applyLowDetailToInstance(instance) end
-			end)
+	Lighting.GlobalShadows = enabled and false or originalGlobalShadows
+	for _, instance in ipairs(workspace:GetDescendants()) do
+		if instance:IsA("ParticleEmitter") or instance:IsA("Trail") or instance:IsA("Beam") then
+			if lowDetailEnabledCache[instance] == nil then lowDetailEnabledCache[instance] = instance.Enabled end
+			instance.Enabled = enabled and false or lowDetailEnabledCache[instance]
 		end
-		if not antiLagLightingConnection then
-			antiLagLightingConnection = Lighting.DescendantAdded:Connect(function(instance)
-				if state.antiLag then applyLowDetailToInstance(instance) end
-			end)
-		end
-		return
 	end
-
-	if antiLagWorkspaceConnection then antiLagWorkspaceConnection:Disconnect(); antiLagWorkspaceConnection = nil end
-	if antiLagLightingConnection then antiLagLightingConnection:Disconnect(); antiLagLightingConnection = nil end
-	Lighting.GlobalShadows = originalGlobalShadows
-	workspace.Terrain.Decoration = originalTerrainDecoration
-	for instance, original in pairs(lowDetailOriginals) do
-		pcall(function() instance[original.property] = original.value end)
-		lowDetailOriginals[instance] = nil
+	if not enabled then
+		for instance, wasEnabled in pairs(lowDetailEnabledCache) do
+			if instance.Parent then instance.Enabled = wasEnabled end
+			lowDetailEnabledCache[instance] = nil
+		end
 	end
 end
 
 gui = create("ScreenGui", {
 	Name = "TwinGGXPT",
-	Enabled = true,
+	Enabled = false,
 	IgnoreGuiInset = true,
-	DisplayOrder = 100,
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
@@ -596,7 +541,24 @@ local root = create("Frame", {
 }, gui)
 corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
-gradient(root, Color3.fromRGB(18, 30, 48), Color3.fromRGB(8, 14, 25), 115)
+local menuBackground = create("ImageLabel", {
+	Name = "MenuBackground",
+	Active = false,
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	Position = UDim2.fromScale(0, 0),
+	Size = UDim2.fromScale(1, 1),
+	Image = "https://i.pinimg.com/736x/20/14/bd/2014bdf5fbf2495ee7481a6a20399acf.jpg",
+	ImageTransparency = 0,
+	ScaleType = Enum.ScaleType.Crop,
+	ZIndex = 11,
+}, root)
+
+task.delay(8, function()
+	if menuBackground.Parent and not menuBackground.IsLoaded then
+		warn("El fondo desde Pinterest no cargó. Roblox puede bloquear dominios externos; revisa Output.")
+	end
+end)
 
 local rootGlow = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(43, 139, 211),
@@ -611,14 +573,16 @@ corner(rootGlow, 999)
 local topbar = create("Frame", {
 	Active = true,
 	BackgroundColor3 = SURFACE_2,
+	BackgroundTransparency = 0.62,
 	BorderSizePixel = 0,
 	Size = UDim2.new(1, 0, 0, 48),
-	ZIndex = 11,
+	ZIndex = 12,
 }, root)
 corner(topbar, 18)
 gradient(topbar, Color3.fromRGB(31, 52, 80), Color3.fromRGB(16, 26, 44), 0)
 create("Frame", {
 	BackgroundColor3 = SURFACE_2,
+	BackgroundTransparency = 0.62,
 	BorderSizePixel = 0,
 	Position = UDim2.new(0, 0, 1, -18),
 	Size = UDim2.new(1, 0, 0, 18),
@@ -668,21 +632,22 @@ stroke(onlineStatus, Color3.fromRGB(94, 239, 184), 1, 0.68)
 
 local side = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(12, 18, 28),
+	BackgroundTransparency = 0.82,
 	BorderSizePixel = 0,
 	Position = UDim2.fromOffset(0, 48),
 	Size = UDim2.new(0, 116, 1, -48),
-	ZIndex = 11,
+	ZIndex = 12,
 }, root)
 gradient(side, Color3.fromRGB(15, 25, 42), Color3.fromRGB(8, 13, 23), 90)
 
 local content = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(10, 17, 29),
-	BackgroundTransparency = 0.22,
+	BackgroundTransparency = 0.88,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
 	Position = UDim2.fromOffset(116, 48),
 	Size = UDim2.new(1, -116, 1, -48),
-	ZIndex = 11,
+	ZIndex = 12,
 }, root)
 
 local hud = create("Frame", {
@@ -1059,7 +1024,7 @@ end
 
 local function renderFovPage()
 	local page = makePage("FOV")
-	sectionTitle(page, "FOV", "CÍRCULO DE ASISTENCIA Y ZOOM DE CÁMARA")
+	sectionTitle(page, "FOV", "CÍRCULO DE ASISTENCIA Y ÁNGULO DE CÁMARA")
 	toggle(page, 70, t("visible"), function() return state.showFov end, function(value)
 		state.showFov = value
 		fovCircle.Visible = value
@@ -1126,9 +1091,17 @@ local function renderFovPage()
 	addSlider(112, 143, t("radius"), CONFIG.MinFovRadius, CONFIG.MaxFovRadius, state.fovRadius, " px", setFovRadius)
 	label(page, "SOLO ADQUIERE UN OBJETIVO DENTRO DEL CÍRCULO Y CON LÍNEA DE VISIÓN.", UDim2.fromOffset(16, 162), UDim2.new(1, -32, 0, 26), Enum.Font.RobotoMono, MUTED, 7)
 
-	state.cameraZoomMax = math.clamp(math.floor(player.CameraMaxZoomDistance + 0.5), CONFIG.MinCameraZoom, CONFIG.MaxCameraZoom)
-	addSlider(198, 229, t("cameraZoom"), CONFIG.MinCameraZoom, CONFIG.MaxCameraZoom, state.cameraZoomMax, " studs", setCameraZoomMax)
-	label(page, "ZOOM MÁXIMO: DISTANCIA PERMITIDA PARA ALEJAR LA CÁMARA.", UDim2.fromOffset(16, 247), UDim2.new(1, -32, 0, 34), Enum.Font.RobotoMono, MUTED, 7)
+	local camera = workspace.CurrentCamera
+	if camera then
+		state.cameraFov = math.clamp(math.floor(camera.FieldOfView + 0.5), CONFIG.MinCameraFov, CONFIG.MaxCameraFov)
+	end
+	addSlider(198, 229, t("cameraFov"), CONFIG.MinCameraFov, CONFIG.MaxCameraFov, state.cameraFov, "°", function(value)
+		state.cameraFov = value
+		state.cameraFovSet = true
+		local currentCamera = workspace.CurrentCamera
+		if currentCamera then currentCamera.FieldOfView = value end
+	end)
+	label(page, "FOV DE CÁMARA CAMBIA EL ÁNGULO DE VISTA, NO LA DISTANCIA MÁXIMA DEL MAPA.", UDim2.fromOffset(16, 247), UDim2.new(1, -32, 0, 34), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function deviceIcon()
@@ -1177,7 +1150,7 @@ local function renderPlayerPage()
 		state.antiLag = value
 		setAntiLag(value)
 	end)
-	label(page, "VELOCIDAD Y SALTO: 8–80 / 50–200 · ANTI LAG REDUCE EFECTOS Y SOMBRAS.", UDim2.fromOffset(16, 260), UDim2.new(1, -32, 0, 17), Enum.Font.RobotoMono, MUTED, 7)
+	label(page, "VELOCIDAD Y SALTO: 8–80 / 50–200 · ANTI LAG OCULTA EFECTOS LOCALES.", UDim2.fromOffset(16, 260), UDim2.new(1, -32, 0, 17), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function renderMiscPage()
@@ -1587,6 +1560,8 @@ local function targetCanReceiveAssist(camera, targetPlayer)
 	return getAimCandidate(camera, targetPlayer)
 end
 
+local cameraWithSetFov = nil
+
 local function updateFrame(deltaTime)
 	applyPlayerMovement()
 	if state.noclip then applyNoclip() end
@@ -1596,6 +1571,10 @@ local function updateFrame(deltaTime)
 
 	local camera = workspace.CurrentCamera
 	if not camera then return end
+	if state.cameraFovSet and camera ~= cameraWithSetFov then
+		camera.FieldOfView = state.cameraFov
+	end
+	cameraWithSetFov = camera
 	local center = fovCenter(camera)
 	fovCircle.Position = UDim2.fromOffset(center.X, center.Y)
 	hudText.Text = (state.language == "ES" and "JUGADORES: " or state.language == "PT" and "JOGADORES: " or "PLAYERS: ") .. #Players:GetPlayers()
@@ -1740,11 +1719,7 @@ Players.PlayerRemoving:Connect(function(leaving)
 	if state.selectedTarget == leaving then state.selectedTarget = nil end
 end)
 
-gui.Enabled = true
-local pageRendered, pageRenderError = pcall(refreshPage)
-if not pageRendered then
-	warn("[TwinGGXPT] Error al dibujar la página inicial: " .. tostring(pageRenderError))
-end
+refreshPage()
 
 
 -- Inicio directo de Twin GG XPT, sin pantalla ni validación de key.
