@@ -697,12 +697,23 @@ local logo = create("TextButton", {
 	Font = Enum.Font.GothamBlack,
 	Position = UDim2.fromOffset(13, 10),
 	Size = UDim2.fromOffset(28, 28),
-	Text = "TGX",
+	Text = "",
 	TextColor3 = Color3.fromRGB(8, 17, 28),
 	TextSize = 9,
 	ZIndex = 12,
 }, topbar)
 corner(logo, 8)
+create("ImageLabel", {
+	Name = "StickerLogoIcon",
+	Active = false,
+	BackgroundTransparency = 1,
+	Image = "rbxassetid://90344236928380",
+	ImageColor3 = WHITE,
+	Position = UDim2.fromOffset(3, 3),
+	ScaleType = Enum.ScaleType.Fit,
+	Size = UDim2.new(1, -6, 1, -6),
+	ZIndex = 13,
+}, logo)
 
 local title = create("TextLabel", {
 	BackgroundTransparency = 1,
@@ -778,7 +789,7 @@ local minimizedButton = create("TextButton", {
 	Font = Enum.Font.GothamBlack,
 	Position = root.Position,
 	Size = UDim2.fromOffset(46, 46),
-	Text = "TGX",
+	Text = "",
 	TextColor3 = Color3.fromRGB(8, 17, 28),
 	TextSize = 10,
 	Visible = false,
@@ -786,6 +797,17 @@ local minimizedButton = create("TextButton", {
 }, gui)
 corner(minimizedButton, 12)
 stroke(minimizedButton, WHITE, 1, 0.45)
+create("ImageLabel", {
+	Name = "StickerLogoIcon",
+	Active = false,
+	BackgroundTransparency = 1,
+	Image = "rbxassetid://90344236928380",
+	ImageColor3 = WHITE,
+	Position = UDim2.fromOffset(3, 3),
+	ScaleType = Enum.ScaleType.Fit,
+	Size = UDim2.new(1, -6, 1, -6),
+	ZIndex = 16,
+}, minimizedButton)
 
 local navButtons = {}
 local pageFrames = {}
