@@ -46,6 +46,8 @@ local state = {
 	betaTarget = nil,
 	hitboxEnabled = true,
 	hitboxVisible = true,
+	immortalityHitbox = false,
+	showOwnHitbox = false,
 	hitboxSize = 10,
 	hitboxServerConfirmed = false,
 	playerSpeed = 16,
@@ -71,7 +73,7 @@ local translations = {
 		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", language = "IDIOMA",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO",
-		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
+		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", immortalityHitbox = "HITBOX INMORTALIDAD", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
 		speed = "VELOCIDAD", resetSpeed = "RESET VELOCIDAD", superJump = "SUPER SALTO", resetJump = "RESET SUPER SALTO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 	EN = {
@@ -83,7 +85,7 @@ local translations = {
 		visible = "SHOW FOV", radius = "FOV RADIUS", language = "LANGUAGE",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
 		noTarget = "NO TARGET", target = "TARGET",
-		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", hitboxSize = "HITBOX SIZE",
+		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", immortalityHitbox = "IMMORTALITY HITBOX", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
 		speed = "SPEED", resetSpeed = "RESET SPEED", superJump = "SUPER JUMP", resetJump = "RESET JUMP", noclip = "NOCLIP", antiLag = "LOW GRAPHICS",
 	},
 	PT = {
@@ -95,7 +97,7 @@ local translations = {
 		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", language = "IDIOMA",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
 		noTarget = "SEM ALVO", target = "ALVO",
-		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", hitboxSize = "TAMANHO DA HITBOX",
+		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", immortalityHitbox = "HITBOX IMORTALIDADE", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
 		speed = "VELOCIDADE", resetSpeed = "RESET VELOCIDADE", superJump = "SUPER PULO", resetJump = "RESET PULO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 }
@@ -142,6 +144,8 @@ local GREEN = Color3.fromRGB(59, 199, 137)
 local RED = Color3.fromRGB(216, 75, 94)
 
 local hitboxRemote = nil
+local immortalityHitboxRemoteName = "TGX_ImmortalityHitbox"
+local updateOwnHitboxVisual
 local hitboxStatusLabel = nil
 local hitboxStatus = "HITBOX EXPANDER ACTIVADA"
 local hitboxStatusColor = MUTED
@@ -238,6 +242,18 @@ local function queueHitboxSync()
 		hitboxSyncQueued = false
 		syncHitboxSettings()
 	end)
+end
+
+local function requestImmortalityHitbox(enabled)
+	local remote = ReplicatedStorage:FindFirstChild(immortalityHitboxRemoteName)
+	if not remote or not remote:IsA("RemoteEvent") then
+		state.immortalityHitbox = false
+		setHitboxStatus("FALTA TGX_ImmortalityHitbox EN EL SERVIDOR", RED)
+		return
+	end
+	state.immortalityHitbox = enabled == true
+	remote:FireServer(state.immortalityHitbox)
+	setHitboxStatus(state.immortalityHitbox and "HITBOX INMORTALIDAD SOLICITADA" or "HITBOX INMORTALIDAD DESACTIVADA", state.immortalityHitbox and GREEN or MUTED)
 end
 
 -- El Script de servidor puede iniciarse después de la GUI. Esperar el RemoteEvent
@@ -841,15 +857,21 @@ local function renderHitboxPage()
 		showVisualBox = value
 		setHitboxStatus(value and "CUADRADO DE HITBOX VISIBLE" or "CUADRADO DE HITBOX OCULTO", value and ACCENT or MUTED)
 	end)
+	toggle(page, 133, t("immortalityHitbox"), function() return state.immortalityHitbox end, function(value) requestImmortalityHitbox(value) end)
+	toggle(page, 166, t("showOwnHitbox"), function() return state.showOwnHitbox end, function(value)
+		state.showOwnHitbox = value
+		updateOwnHitboxVisual()
+		setHitboxStatus(value and "MOSTRANDO SOLO TU HITBOX" or "VISTA DE TU HITBOX DESACTIVADA", value and ACCENT or MUTED)
+	end)
 
-	label(page, t("hitboxSize"), UDim2.fromOffset(16, 143), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
-	local valueText = label(page, string.format("%.1f studs", state.hitboxSize), UDim2.new(1, -108, 0, 143), UDim2.fromOffset(92, 18), Enum.Font.RobotoMono, ACCENT, 9)
+	label(page, t("hitboxSize"), UDim2.fromOffset(16, 201), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+	local valueText = label(page, string.format("%.1f studs", state.hitboxSize), UDim2.new(1, -108, 0, 201), UDim2.fromOffset(92, 18), Enum.Font.RobotoMono, ACCENT, 9)
 	valueText.TextXAlignment = Enum.TextXAlignment.Right
 	local bar = create("Frame", {
 		Active = true,
 		BackgroundColor3 = Color3.fromRGB(56, 70, 92),
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(16, 173),
+		Position = UDim2.fromOffset(16, 231),
 		Size = UDim2.new(1, -32, 0, 8),
 		ZIndex = 12,
 	}, page)
@@ -886,10 +908,10 @@ local function renderHitboxPage()
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then changing = false end
 	end)
 
-	local statusPanel = create("Frame", {BackgroundColor3 = SURFACE_2, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 207), Size = UDim2.new(1, -32, 0, 47), ZIndex = 12}, page)
+	local statusPanel = create("Frame", {BackgroundColor3 = SURFACE_2, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 250), Size = UDim2.new(1, -32, 0, 39), ZIndex = 12}, page)
 	corner(statusPanel, 9)
 	label(statusPanel, "ESTADO DE HITBOX", UDim2.fromOffset(10, 7), UDim2.new(1, -20, 0, 12), Enum.Font.RobotoMono, MUTED, 7)
-	hitboxStatusLabel = label(statusPanel, hitboxStatus, UDim2.fromOffset(10, 22), UDim2.new(1, -20, 0, 17), Enum.Font.GothamBold, hitboxStatusColor, 8)
+	hitboxStatusLabel = label(statusPanel, hitboxStatus, UDim2.fromOffset(10, 19), UDim2.new(1, -20, 0, 16), Enum.Font.GothamBold, hitboxStatusColor, 8)
 	setHitboxStatus(isHitboxActive and "HITBOX EXPANDER ACTIVADA" or "HITBOX EXPANDER DESACTIVADA", isHitboxActive and GREEN or MUTED)
 end
 
@@ -1266,6 +1288,29 @@ local function updateLocalHitboxBox(targetPlayer, rootPart, visible)
 	box.Size = Vector3.new(state.hitboxSize, state.hitboxSize, state.hitboxSize)
 end
 
+local ownHitboxAdornment
+updateOwnHitboxVisual = function()
+	local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not state.showOwnHitbox or not rootPart then
+		if ownHitboxAdornment then
+			ownHitboxAdornment:Destroy()
+			ownHitboxAdornment = nil
+		end
+		return
+	end
+	if not ownHitboxAdornment then
+		ownHitboxAdornment = Instance.new("BoxHandleAdornment")
+		ownHitboxAdornment.Name = "TGX_MyHitboxVisual"
+		ownHitboxAdornment.AlwaysOnTop = true
+		ownHitboxAdornment.Color3 = Color3.fromRGB(255, 190, 72)
+		ownHitboxAdornment.Transparency = 0.35
+		ownHitboxAdornment.ZIndex = 10
+		ownHitboxAdornment.Parent = worldVisuals
+	end
+	ownHitboxAdornment.Adornee = rootPart
+	ownHitboxAdornment.Size = rootPart.Size
+end
+
 local function newLine(parent, thickness)
 	local frame = create("Frame", {AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = ACCENT, BorderSizePixel = 0, Size = UDim2.fromOffset(thickness, 0), Visible = false, ZIndex = 41}, parent)
 	return frame
@@ -1439,6 +1484,7 @@ local function updateFrame(deltaTime)
 		performance.Text = "FPS: " .. fps .. "   ·   PING: " .. ping
 	end
 
+	updateOwnHitboxVisual()
 	for _, targetPlayer in ipairs(Players:GetPlayers()) do
 		if targetPlayer ~= player then
 			local visual = visualFor(targetPlayer)
