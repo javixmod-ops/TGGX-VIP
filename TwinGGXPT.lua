@@ -475,6 +475,7 @@ end
 local root = create("Frame", {
 	Active = true,
 	BackgroundColor3 = SURFACE,
+	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
 	Position = UDim2.new(0.5, -228, 0.5, -190),
@@ -483,8 +484,6 @@ local root = create("Frame", {
 }, gui)
 corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
-gradient(root, Color3.fromRGB(18, 30, 48), Color3.fromRGB(8, 14, 25), 115)
-
 local menuBackground = create("ImageLabel", {
 	Name = "MenuBackground",
 	Active = false,
@@ -493,7 +492,7 @@ local menuBackground = create("ImageLabel", {
 	Position = UDim2.fromScale(0, 0),
 	Size = UDim2.fromScale(1, 1),
 	Image = "rbxassetid://135136288920049",
-	ImageTransparency = 0.25,
+	ImageTransparency = 0,
 	ScaleType = Enum.ScaleType.Crop,
 	ZIndex = 10,
 }, root)
@@ -511,6 +510,7 @@ corner(rootGlow, 999)
 local topbar = create("Frame", {
 	Active = true,
 	BackgroundColor3 = SURFACE_2,
+	BackgroundTransparency = 0.22,
 	BorderSizePixel = 0,
 	Size = UDim2.new(1, 0, 0, 48),
 	ZIndex = 11,
@@ -519,6 +519,7 @@ corner(topbar, 18)
 gradient(topbar, Color3.fromRGB(31, 52, 80), Color3.fromRGB(16, 26, 44), 0)
 create("Frame", {
 	BackgroundColor3 = SURFACE_2,
+	BackgroundTransparency = 0.22,
 	BorderSizePixel = 0,
 	Position = UDim2.new(0, 0, 1, -18),
 	Size = UDim2.new(1, 0, 0, 18),
@@ -568,6 +569,7 @@ stroke(onlineStatus, Color3.fromRGB(94, 239, 184), 1, 0.68)
 
 local side = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(12, 18, 28),
+	BackgroundTransparency = 0.38,
 	BorderSizePixel = 0,
 	Position = UDim2.fromOffset(0, 48),
 	Size = UDim2.new(0, 116, 1, -48),
@@ -577,7 +579,7 @@ gradient(side, Color3.fromRGB(15, 25, 42), Color3.fromRGB(8, 13, 23), 90)
 
 local content = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(10, 17, 29),
-	BackgroundTransparency = 0.22,
+	BackgroundTransparency = 0.42,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
 	Position = UDim2.fromOffset(116, 48),
