@@ -16,6 +16,7 @@ local SoundService = game:GetService("SoundService")
 local player = Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local DEFAULT_ACCENT = Color3.fromRGB(70, 199, 255)
 
 local CONFIG = {
 	MaxFovRadius = 360,
@@ -48,7 +49,9 @@ local state = {
 	epsSkeleton = false,
 	epsHealth = false,
 	epsDistance = false,
+	epsNearestLine = false,
 	selectedTarget = nil,
+	accentColor = DEFAULT_ACCENT,
 	hitboxEnabled = true,
 	hitboxVisible = true,
 	smallOwnHitbox = false,
@@ -94,9 +97,10 @@ local restoreLocalHitboxExpander
 local translations = {
 	ES = {
 		title = "TWIN GG XPT",
-		pageAim = "AIMBOT", pageEps = "EPS", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MÚSICA",
-			aimAssist = "AIMBOT ÚNICO", notifications = "NOTIFI UI", smoothAim = "SEGUIMIENTO SUAVE",
+		pageAim = "AIMBOT", pageEps = "EPS", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MÚSICA", pageColors = "COLORES",
+		aimAssist = "AIMBOT ÚNICO", notifications = "NOTIFI UI", smoothAim = "SEGUIMIENTO SUAVE",
 		line = "LÍNEAS EPS", box = "CUADRADO EPS", skeleton = "EPS ESQUELETO",
+		nearestLine = "LÍNEA CUERPO A CUERPO",
 		health = "EPS VIDA", distance = "EPS METROS", counter = "CONTADOR DE JUGADORES",
 		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraFov = "FOV CÁMARA", language = "IDIOMA",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
@@ -106,9 +110,10 @@ local translations = {
 	},
 	EN = {
 		title = "TWIN GG XPT",
-		pageAim = "AIM ASSIST", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MUSIC",
-			aimAssist = "SINGLE AIM ASSIST", notifications = "UI NOTIFICATIONS", smoothAim = "SMOOTH AIM",
+		pageAim = "AIM ASSIST", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MUSIC", pageColors = "COLORS",
+		aimAssist = "SINGLE AIM ASSIST", notifications = "UI NOTIFICATIONS", smoothAim = "SMOOTH AIM",
 		line = "ESP LINES", box = "ESP BOX", skeleton = "ESP SKELETON",
+		nearestLine = "LINE TO NEAREST TARGET",
 		health = "ESP HEALTH", distance = "ESP DISTANCE", counter = "PLAYER COUNTER",
 		visible = "SHOW FOV", radius = "FOV RADIUS", cameraFov = "CAMERA FOV", language = "LANGUAGE",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
@@ -118,9 +123,10 @@ local translations = {
 	},
 	PT = {
 		title = "TWIN GG XPT",
-		pageAim = "MIRA", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MÚSICA",
-			aimAssist = "MIRA ASSISTIDA ÚNICA", notifications = "NOTIFICAÇÕES UI", smoothAim = "RASTREAMENTO SUAVE",
+		pageAim = "MIRA", pageEps = "ESP", pageFov = "FOV", pageHitbox = "HITBOX", pagePlayer = "PLAYER", pageMisc = "MISC", pageMusic = "MÚSICA", pageColors = "CORES",
+		aimAssist = "MIRA ASSISTIDA ÚNICA", notifications = "NOTIFICAÇÕES UI", smoothAim = "RASTREAMENTO SUAVE",
 		line = "LINHAS ESP", box = "QUADRO ESP", skeleton = "ESQUELETO ESP",
+		nearestLine = "LINHA AO ALVO MAIS PRÓXIMO",
 		health = "VIDA ESP", distance = "DISTÂNCIA ESP", counter = "CONTADOR DE JOGADORES",
 		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraFov = "FOV DA CÂMERA", language = "IDIOMA",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
@@ -135,6 +141,34 @@ if old then old:Destroy() end
 
 local function t(key)
 	return translations[state.language][key] or key
+end
+
+local npcCharacterCache = setmetatable({}, {__mode = "k"})
+local npcCatalogReady = false
+local npcCatalogScanning = false
+local function registerNpcHumanoid(humanoid)
+	if not humanoid:IsA("Humanoid") then return end
+	local model = humanoid.Parent
+	if model and model:IsA("Model") then npcCharacterCache[model] = true end
+end
+workspace.DescendantAdded:Connect(function(instance)
+	if instance:IsA("Humanoid") then task.defer(registerNpcHumanoid, instance) end
+end)
+workspace.DescendantRemoving:Connect(function(instance)
+	if instance:IsA("Model") then npcCharacterCache[instance] = nil end
+end)
+local function ensureNpcCatalog()
+	if npcCatalogReady or npcCatalogScanning then return end
+	npcCatalogScanning = true
+	task.spawn(function()
+		local descendants = workspace:GetDescendants()
+		for index, instance in ipairs(descendants) do
+			if instance:IsA("Humanoid") then registerNpcHumanoid(instance) end
+			if index % 500 == 0 then task.wait() end
+		end
+		npcCatalogReady = true
+		npcCatalogScanning = false
+	end)
 end
 
 local function create(className, props, parent)
@@ -165,7 +199,7 @@ end
 
 local WHITE = Color3.fromRGB(242, 248, 255)
 local MUTED = Color3.fromRGB(152, 171, 191)
-local ACCENT = Color3.fromRGB(70, 199, 255)
+local ACCENT = state.accentColor
 local SURFACE = Color3.fromRGB(16, 23, 35)
 local SURFACE_2 = Color3.fromRGB(26, 38, 56)
 local GREEN = Color3.fromRGB(59, 199, 137)
@@ -182,12 +216,63 @@ local hitboxRequestId = 0
 local hitboxResponseId = 0
 local hitboxServerReady = false
 local gui
+local worldVisuals
+local colorPickerRoot
 local hitboxAdjustOverlay
 local hitboxAdjustText
 local hitboxAdjustSpinner
 local hitboxAdjustToken = 0
 local beginHitboxAdjustment
 local finishHitboxAdjustment
+
+local function getAccentTextColor(color)
+	local luminance = color.R * 0.299 + color.G * 0.587 + color.B * 0.114
+	return luminance > 0.58 and Color3.fromRGB(8, 17, 28) or WHITE
+end
+
+local function applyAccentColor(color)
+	if typeof(color) ~= "Color3" then return end
+	local previousAccent = ACCENT
+	ACCENT = color
+	state.accentColor = color
+	local function updateRoot(rootObject)
+		if not rootObject then return end
+		for _, item in ipairs(rootObject:GetDescendants()) do
+			local isPickerItem = colorPickerRoot and (item == colorPickerRoot or item:IsDescendantOf(colorPickerRoot))
+			if not isPickerItem then
+				if item:IsA("UIStroke") then
+					if item.Color == previousAccent then item.Color = color end
+				elseif item:IsA("GuiObject") then
+					local hadAccentBackground = item.BackgroundColor3 == previousAccent
+					if hadAccentBackground then item.BackgroundColor3 = color end
+					if item.BorderColor3 == previousAccent then item.BorderColor3 = color end
+					if item:IsA("TextLabel") or item:IsA("TextButton") or item:IsA("TextBox") then
+						if item.TextColor3 == previousAccent then item.TextColor3 = color end
+						if hadAccentBackground and item:IsA("TextButton") then item.TextColor3 = getAccentTextColor(color) end
+					end
+					if item:IsA("ImageLabel") or item:IsA("ImageButton") then
+						if item.ImageColor3 == previousAccent then item.ImageColor3 = color end
+					end
+				elseif item:IsA("Highlight") then
+					if item.OutlineColor == previousAccent then item.OutlineColor = color end
+					if item.FillColor == previousAccent then item.FillColor = color end
+				elseif item:IsA("BoxHandleAdornment") then
+					if item.Color3 == previousAccent then item.Color3 = color end
+				elseif item:IsA("UIGradient") then
+					local points, changed = {}, false
+					for _, point in ipairs(item.Color.Keypoints) do
+						local pointColor = point.Value
+						if pointColor == previousAccent then pointColor = color; changed = true end
+						points[#points + 1] = ColorSequenceKeypoint.new(point.Time, pointColor)
+					end
+					if changed then item.Color = ColorSequence.new(points) end
+				end
+			end
+		end
+	end
+	updateRoot(gui)
+	updateRoot(worldVisuals)
+end
 
 local MIN_OWN_HITBOX_SIZE = 0.1
 local MAX_OWN_HITBOX_SIZE = 3.0
@@ -564,24 +649,16 @@ local root = create("Frame", {
 }, gui)
 corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
-local menuBackground = create("ImageLabel", {
+create("Frame", {
 	Name = "MenuBackground",
 	Active = false,
-	BackgroundTransparency = 1,
+	BackgroundColor3 = SURFACE,
+	BackgroundTransparency = 0,
 	BorderSizePixel = 0,
 	Position = UDim2.fromScale(0, 0),
 	Size = UDim2.fromScale(1, 1),
-	Image = "https://i.pinimg.com/736x/20/14/bd/2014bdf5fbf2495ee7481a6a20399acf.jpg",
-	ImageTransparency = 0,
-	ScaleType = Enum.ScaleType.Crop,
 	ZIndex = 11,
 }, root)
-
-task.delay(8, function()
-	if menuBackground.Parent and not menuBackground.IsLoaded then
-		warn("El fondo desde Pinterest no cargó. Roblox puede bloquear dominios externos; revisa Output.")
-	end
-end)
 
 local rootGlow = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(43, 139, 211),
@@ -1038,6 +1115,11 @@ local function renderEpsPage()
 	toggle(page, 165, t("health"), function() return state.epsHealth end, function(value) state.epsHealth = value end)
 	toggle(page, 198, t("distance"), function() return state.epsDistance end, function(value) state.epsDistance = value end)
 	toggle(page, 231, t("counter"), function() return hud.Visible end, function(value) hud.Visible = value end)
+	toggle(page, 264, t("nearestLine"), function() return state.epsNearestLine end, function(value)
+		state.epsNearestLine = value
+		if value then ensureNpcCatalog() end
+	end)
+	label(page, "TRAZA DESDE TU CUERPO AL JUGADOR/BOT MÁS CERCANO.", UDim2.fromOffset(16, 297), UDim2.new(1, -32, 0, 20), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function setFovRadius(radius)
@@ -1495,12 +1577,210 @@ local function renderMusicPage()
 	updateMusicPlayButton()
 end
 
+local function renderColorsPage()
+	local page = makePage("COLORS")
+	sectionTitle(page, t("pageColors"), "PERSONALIZA EL ACENTO DEL GUI · ESP · FOV")
+
+	local wheelSize = 190
+	local center = wheelSize * 0.5
+	local hueRadius = 81
+	local ringThickness = 18
+	local hue, saturation, value = state.accentColor:ToHSV()
+	local wheelRoot = create("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(14, 64),
+		Size = UDim2.fromOffset(wheelSize, wheelSize),
+		ZIndex = 13,
+	}, page)
+	colorPickerRoot = wheelRoot
+
+	local hueSegments = 72
+	local segmentWidth = 2 * math.pi * hueRadius / hueSegments + 1
+	for index = 0, hueSegments - 1 do
+		local angle = index / hueSegments * 2 * math.pi - math.pi * 0.5
+		local segment = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromHSV(index / hueSegments, 1, 1),
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(center + math.cos(angle) * hueRadius, center + math.sin(angle) * hueRadius),
+			Rotation = math.deg(angle) + 90,
+			Size = UDim2.fromOffset(segmentWidth, ringThickness),
+			ZIndex = 14,
+		}, wheelRoot)
+		corner(segment, 3)
+	end
+
+	local svSize = 76
+	local svOffset = (wheelSize - svSize) * 0.5
+	local svPanel = create("Frame", {
+		BackgroundColor3 = Color3.fromHSV(hue, 1, 1),
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(svOffset, svOffset),
+		Size = UDim2.fromOffset(svSize, svSize),
+		ZIndex = 15,
+	}, wheelRoot)
+	corner(svPanel, 4)
+	stroke(svPanel, Color3.fromRGB(238, 246, 255), 1, 0.15)
+	local colorGrid = {}
+	local gridCount = 12
+	local cellSize = svSize / gridCount
+	for row = 0, gridCount - 1 do
+		colorGrid[row + 1] = {}
+		for column = 0, gridCount - 1 do
+			colorGrid[row + 1][column + 1] = create("Frame", {
+				BackgroundColor3 = Color3.fromHSV(hue, column / (gridCount - 1), 1 - row / (gridCount - 1)),
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(column * cellSize, row * cellSize),
+				Size = UDim2.fromOffset(cellSize + 0.15, cellSize + 0.15),
+				ZIndex = 16,
+			}, svPanel)
+		end
+	end
+
+	local hueMarker = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		Size = UDim2.fromOffset(13, 13),
+		ZIndex = 19,
+	}, wheelRoot)
+	corner(hueMarker, 13)
+	stroke(hueMarker, Color3.fromRGB(10, 17, 28), 2, 0)
+	local svMarker = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromOffset(11, 11),
+		ZIndex = 19,
+	}, wheelRoot)
+	corner(svMarker, 11)
+	stroke(svMarker, WHITE, 2, 0)
+	local wheelInput = create("TextButton", {
+		Active = true,
+		AutoButtonColor = false,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.fromScale(1, 1),
+		Text = "",
+		ZIndex = 30,
+	}, wheelRoot)
+
+	local preview = create("Frame", {
+		BackgroundColor3 = state.accentColor,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(218, 82),
+		Size = UDim2.fromOffset(104, 54),
+		ZIndex = 13,
+	}, page)
+	corner(preview, 10)
+	stroke(preview, ACCENT, 1, 0.08)
+	local hexLabel = label(page, "#46C7FF", UDim2.fromOffset(218, 143), UDim2.fromOffset(104, 18), Enum.Font.RobotoMono, WHITE, 9)
+	hexLabel.TextXAlignment = Enum.TextXAlignment.Center
+	label(page, "APLICA ESTE COLOR AL GUI, A LAS LÍNEAS ESP Y AL CÍRCULO FOV.", UDim2.fromOffset(218, 166), UDim2.fromOffset(104, 52), Enum.Font.RobotoMono, MUTED, 7)
+	local resetColor = create("TextButton", {
+		AutoButtonColor = false,
+		BackgroundColor3 = SURFACE_2,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Position = UDim2.fromOffset(218, 229),
+		Size = UDim2.fromOffset(104, 25),
+		Text = "RESTABLECER",
+		TextColor3 = WHITE,
+		TextSize = 8,
+		ZIndex = 13,
+	}, page)
+	corner(resetColor, 7)
+	label(page, "ANILLO: TONO · CUADRO: SATURACIÓN Y BRILLO", UDim2.fromOffset(16, 264), UDim2.new(1, -32, 0, 26), Enum.Font.RobotoMono, MUTED, 7)
+
+	local function updatePaletteHue()
+		svPanel.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+		for row = 0, gridCount - 1 do
+			for column = 0, gridCount - 1 do
+				colorGrid[row + 1][column + 1].BackgroundColor3 = Color3.fromHSV(hue, column / (gridCount - 1), 1 - row / (gridCount - 1))
+			end
+		end
+	end
+	local lastThemeApply = 0
+	local function refreshSelection(applyTheme, forceTheme)
+		local selectedColor = Color3.fromHSV(hue, saturation, value)
+		state.accentColor = selectedColor
+		preview.BackgroundColor3 = selectedColor
+		local red = math.floor(selectedColor.R * 255 + 0.5)
+		local green = math.floor(selectedColor.G * 255 + 0.5)
+		local blue = math.floor(selectedColor.B * 255 + 0.5)
+		hexLabel.Text = string.format("#%02X%02X%02X", red, green, blue)
+		local angle = hue * 2 * math.pi - math.pi * 0.5
+		hueMarker.Position = UDim2.fromOffset(center + math.cos(angle) * hueRadius, center + math.sin(angle) * hueRadius)
+		svMarker.Position = UDim2.fromOffset(svOffset + saturation * svSize, svOffset + (1 - value) * svSize)
+		if applyTheme then
+			local now = os.clock()
+			if forceTheme or now - lastThemeApply >= 0.05 then
+				applyAccentColor(selectedColor)
+				lastThemeApply = now
+			end
+		end
+	end
+	local lastPaletteHue = hue
+	local function setFromPosition(position)
+		local x = position.X - wheelInput.AbsolutePosition.X
+		local y = position.Y - wheelInput.AbsolutePosition.Y
+		local dx, dy = x - center, y - center
+		local radius = math.sqrt(dx * dx + dy * dy)
+		local outer = hueRadius + ringThickness * 0.5 + 2
+		local inner = hueRadius - ringThickness * 0.5 - 2
+		if radius >= inner and radius <= outer then
+			hue = (math.atan2(dy, dx) / (2 * math.pi) + 1.25) % 1
+			if math.abs(hue - lastPaletteHue) > 0.0001 then
+				updatePaletteHue()
+				lastPaletteHue = hue
+			end
+		elseif x >= svOffset and x <= svOffset + svSize and y >= svOffset and y <= svOffset + svSize then
+			saturation = math.clamp((x - svOffset) / svSize, 0, 1)
+			value = 1 - math.clamp((y - svOffset) / svSize, 0, 1)
+		else
+			return
+		end
+		refreshSelection(true, false)
+	end
+	local draggingWheel = false
+	wheelInput.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			draggingWheel = true
+			setFromPosition(input.Position)
+		end
+	end)
+	local changedConnection = UserInputService.InputChanged:Connect(function(input)
+		if draggingWheel and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			setFromPosition(input.Position)
+		end
+	end)
+	local endedConnection = UserInputService.InputEnded:Connect(function(input)
+		if draggingWheel and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+			draggingWheel = false
+			refreshSelection(true, true)
+		end
+	end)
+	page.Destroying:Connect(function()
+		changedConnection:Disconnect()
+		endedConnection:Disconnect()
+		if colorPickerRoot == wheelRoot then colorPickerRoot = nil end
+	end)
+	resetColor.Activated:Connect(function()
+		hue, saturation, value = DEFAULT_ACCENT:ToHSV()
+		lastPaletteHue = hue
+		updatePaletteHue()
+		refreshSelection(true, true)
+	end)
+	refreshSelection(false, false)
+end
+
 local function showPage(pageName)
 	state.page = pageName
 	for name, frame in pairs(pageFrames) do frame.Visible = name == pageName end
 	for name, nav in pairs(navButtons) do
 		nav.BackgroundColor3 = name == pageName and ACCENT or Color3.fromRGB(12, 18, 28)
-		nav.TextColor3 = name == pageName and Color3.fromRGB(7, 19, 29) or MUTED
+		nav.TextColor3 = name == pageName and getAccentTextColor(ACCENT) or MUTED
 	end
 end
 
@@ -1513,21 +1793,22 @@ refreshPage = function()
 	renderPlayerPage()
 	renderMiscPage()
 	renderMusicPage()
+	renderColorsPage()
 	showPage(state.page)
 	title.Text = t("title")
-	local navKeys = {AIMBOT = "pageAim", EPS = "pageEps", FOV = "pageFov", HITBOX = "pageHitbox", PLAYER = "pagePlayer", MISC = "pageMisc", MUSIC = "pageMusic"}
+	local navKeys = {AIMBOT = "pageAim", EPS = "pageEps", FOV = "pageFov", HITBOX = "pageHitbox", PLAYER = "pagePlayer", MISC = "pageMisc", MUSIC = "pageMusic", COLORS = "pageColors"}
 	for key, button in pairs(navButtons) do button.Text = t(navKeys[key]) end
 end
 
-local navOrder = {"AIMBOT", "EPS", "FOV", "HITBOX", "PLAYER", "MISC", "MUSIC"}
+local navOrder = {"AIMBOT", "EPS", "FOV", "HITBOX", "PLAYER", "MISC", "MUSIC", "COLORS"}
 for index, name in ipairs(navOrder) do
 	local nav = create("TextButton", {
 		AutoButtonColor = false,
 		BackgroundColor3 = Color3.fromRGB(12, 18, 28),
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
-		Position = UDim2.fromOffset(8, 13 + (index - 1) * 46),
-		Size = UDim2.new(1, -16, 0, 36),
+		Position = UDim2.fromOffset(8, 13 + (index - 1) * 39),
+		Size = UDim2.new(1, -16, 0, 34),
 		Text = name,
 		TextColor3 = MUTED,
 		TextSize = 9,
@@ -1617,7 +1898,7 @@ local visualFolder = create("Frame", {
 
 local oldWorldVisuals = workspace:FindFirstChild("TwinGGXPT_WorldVisuals")
 if oldWorldVisuals then oldWorldVisuals:Destroy() end
-local worldVisuals = Instance.new("Folder")
+worldVisuals = Instance.new("Folder")
 worldVisuals.Name = "TwinGGXPT_WorldVisuals"
 worldVisuals.Parent = workspace
 
@@ -1791,6 +2072,34 @@ local function setLine(frame, from, to, visible)
 	frame.Rotation = math.deg(math.atan2(delta.Y, delta.X)) - 90
 end
 
+local nearestBodyLine = newLine(visualFolder, 3)
+nearestBodyLine.ZIndex = 44
+local nearestBodyTargetRoot = nil
+local nextNearestBodySearchAt = 0
+local function findNearestBodyTarget(ownRoot)
+	local nearestRoot = nil
+	local nearestDistance = math.huge
+	local ownCharacter = player.Character
+	local function consider(character)
+		if not character or character == ownCharacter or not character:IsA("Model") or not character:IsDescendantOf(workspace) then return end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		local rootPart = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
+		if not humanoid or humanoid.Health <= 0 or not rootPart or not rootPart:IsA("BasePart") then return end
+		local distance = (rootPart.Position - ownRoot.Position).Magnitude
+		if distance < nearestDistance then
+			nearestDistance = distance
+			nearestRoot = rootPart
+		end
+	end
+	for _, targetPlayer in ipairs(Players:GetPlayers()) do
+		if targetPlayer ~= player then consider(targetPlayer.Character) end
+	end
+	for model in pairs(npcCharacterCache) do
+		if not Players:GetPlayerFromCharacter(model) then consider(model) end
+	end
+	return nearestRoot
+end
+
 local r15SkeletonLinks = {
 	{{"Head"}, {"UpperTorso"}}, {{"UpperTorso"}, {"LowerTorso"}},
 	{{"UpperTorso"}, {"LeftUpperArm"}}, {{"LeftUpperArm"}, {"LeftLowerArm"}},
@@ -1852,6 +2161,31 @@ local function updateFrame(deltaTime)
 	end
 
 	updateOwnHitboxVisual()
+	if state.epsNearestLine then
+		local ownCharacter = player.Character
+		local ownRoot = ownCharacter and (ownCharacter:FindFirstChild("HumanoidRootPart") or ownCharacter.PrimaryPart)
+		if ownRoot and ownRoot:IsA("BasePart") then
+			if now >= nextNearestBodySearchAt or not nearestBodyTargetRoot or not nearestBodyTargetRoot.Parent then
+				nextNearestBodySearchAt = now + 0.12
+				nearestBodyTargetRoot = findNearestBodyTarget(ownRoot)
+			end
+			if nearestBodyTargetRoot and nearestBodyTargetRoot.Parent then
+				local ownScreen = camera:WorldToViewportPoint(ownRoot.Position)
+				local targetScreen = camera:WorldToViewportPoint(nearestBodyTargetRoot.Position)
+				local lineVisible = ownScreen.Z > 0 and targetScreen.Z > 0
+				setLine(nearestBodyLine, Vector2.new(ownScreen.X, ownScreen.Y), Vector2.new(targetScreen.X, targetScreen.Y), lineVisible)
+			else
+				nearestBodyLine.Visible = false
+			end
+		else
+			nearestBodyTargetRoot = nil
+			nearestBodyLine.Visible = false
+		end
+	else
+		nearestBodyTargetRoot = nil
+		nextNearestBodySearchAt = 0
+		nearestBodyLine.Visible = false
+	end
 	for _, targetPlayer in ipairs(Players:GetPlayers()) do
 		if targetPlayer ~= player then
 			local visual = visualFor(targetPlayer)
