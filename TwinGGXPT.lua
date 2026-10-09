@@ -649,11 +649,25 @@ local root = create("Frame", {
 }, gui)
 corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
-create("Frame", {
+create("ImageLabel", {
 	Name = "MenuBackground",
 	Active = false,
 	BackgroundColor3 = SURFACE,
 	BackgroundTransparency = 0,
+	BorderSizePixel = 0,
+	Image = "rbxassetid://110231170045856",
+	ImageColor3 = WHITE,
+	ImageTransparency = 0.10,
+	Position = UDim2.fromScale(0, 0),
+	ScaleType = Enum.ScaleType.Crop,
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 11,
+}, root)
+create("Frame", {
+	Name = "MenuBackgroundShade",
+	Active = false,
+	BackgroundColor3 = Color3.fromRGB(6, 10, 18),
+	BackgroundTransparency = 0.45,
 	BorderSizePixel = 0,
 	Position = UDim2.fromScale(0, 0),
 	Size = UDim2.fromScale(1, 1),
