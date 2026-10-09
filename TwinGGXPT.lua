@@ -649,7 +649,7 @@ local root = create("Frame", {
 }, gui)
 corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
-create("ImageLabel", {
+local menuBackground = create("ImageLabel", {
 	Name = "MenuBackground",
 	Active = false,
 	BackgroundColor3 = SURFACE,
@@ -663,7 +663,8 @@ create("ImageLabel", {
 	Size = UDim2.fromScale(1, 1),
 	ZIndex = 11,
 }, root)
-create("Frame", {
+corner(menuBackground, 20)
+local menuBackgroundShade = create("Frame", {
 	Name = "MenuBackgroundShade",
 	Active = false,
 	BackgroundColor3 = Color3.fromRGB(6, 10, 18),
@@ -673,6 +674,7 @@ create("Frame", {
 	Size = UDim2.fromScale(1, 1),
 	ZIndex = 11,
 }, root)
+corner(menuBackgroundShade, 20)
 
 local rootGlow = create("Frame", {
 	BackgroundColor3 = Color3.fromRGB(43, 139, 211),
@@ -707,6 +709,7 @@ local logo = create("TextButton", {
 	Active = true,
 	AutoButtonColor = false,
 	BackgroundColor3 = ACCENT,
+	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	Font = Enum.Font.GothamBlack,
 	Position = UDim2.fromOffset(13, 10),
@@ -717,17 +720,18 @@ local logo = create("TextButton", {
 	ZIndex = 12,
 }, topbar)
 corner(logo, 8)
-create("ImageLabel", {
+local logoIcon = create("ImageLabel", {
 	Name = "StickerLogoIcon",
 	Active = false,
 	BackgroundTransparency = 1,
 	Image = "rbxassetid://110231170045856",
 	ImageColor3 = WHITE,
-	Position = UDim2.fromOffset(3, 3),
+	Position = UDim2.fromScale(0, 0),
 	ScaleType = Enum.ScaleType.Fit,
-	Size = UDim2.new(1, -6, 1, -6),
+	Size = UDim2.fromScale(1, 1),
 	ZIndex = 13,
 }, logo)
+corner(logoIcon, 8)
 
 local title = create("TextLabel", {
 	BackgroundTransparency = 1,
@@ -799,6 +803,7 @@ local minimizedButton = create("TextButton", {
 	Active = true,
 	AutoButtonColor = false,
 	BackgroundColor3 = ACCENT,
+	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	Font = Enum.Font.GothamBlack,
 	Position = root.Position,
@@ -810,18 +815,18 @@ local minimizedButton = create("TextButton", {
 	ZIndex = 15,
 }, gui)
 corner(minimizedButton, 12)
-stroke(minimizedButton, WHITE, 1, 0.45)
-create("ImageLabel", {
+local minimizedIcon = create("ImageLabel", {
 	Name = "StickerLogoIcon",
 	Active = false,
 	BackgroundTransparency = 1,
 	Image = "rbxassetid://110231170045856",
 	ImageColor3 = WHITE,
-	Position = UDim2.fromOffset(3, 3),
+	Position = UDim2.fromScale(0, 0),
 	ScaleType = Enum.ScaleType.Fit,
-	Size = UDim2.new(1, -6, 1, -6),
+	Size = UDim2.fromScale(1, 1),
 	ZIndex = 16,
 }, minimizedButton)
+corner(minimizedIcon, 12)
 
 local navButtons = {}
 local pageFrames = {}
@@ -884,9 +889,16 @@ local function sectionTitle(parent, titleText, subtitle)
 end
 
 local function makePage(name)
-	local page = create("Frame", {
+	local page = create("ScrollingFrame", {
+		Active = true,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		ScrollBarImageColor3 = ACCENT,
+		ScrollBarImageTransparency = 0.2,
+		ScrollBarThickness = 4,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
 		Size = UDim2.fromScale(1, 1),
 		Visible = false,
 		ZIndex = 12,
@@ -1813,7 +1825,10 @@ end
 
 local function showPage(pageName)
 	state.page = pageName
-	for name, frame in pairs(pageFrames) do frame.Visible = name == pageName end
+	for name, frame in pairs(pageFrames) do
+		frame.Visible = name == pageName
+		if name == pageName then frame.CanvasPosition = Vector2.new(0, 0) end
+	end
 	for name, nav in pairs(navButtons) do
 		nav.BackgroundColor3 = name == pageName and ACCENT or Color3.fromRGB(12, 18, 28)
 		nav.TextColor3 = name == pageName and getAccentTextColor(ACCENT) or MUTED
@@ -1837,19 +1852,44 @@ refreshPage = function()
 end
 
 local navOrder = {"AIMBOT", "EPS", "FOV", "HITBOX", "PLAYER", "MISC", "MUSIC", "COLORS"}
+local navScroll = create("ScrollingFrame", {
+	Active = true,
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	CanvasSize = UDim2.new(0, 0, 0, 0),
+	Position = UDim2.fromScale(0, 0),
+	ScrollBarImageColor3 = ACCENT,
+	ScrollBarImageTransparency = 0.2,
+	ScrollBarThickness = 3,
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 12,
+}, side)
+create("UIPadding", {
+	PaddingBottom = UDim.new(0, 10),
+	PaddingLeft = UDim.new(0, 8),
+	PaddingRight = UDim.new(0, 9),
+	PaddingTop = UDim.new(0, 13),
+}, navScroll)
+create("UIListLayout", {
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	Padding = UDim.new(0, 5),
+	SortOrder = Enum.SortOrder.LayoutOrder,
+}, navScroll)
 for index, name in ipairs(navOrder) do
 	local nav = create("TextButton", {
 		AutoButtonColor = false,
 		BackgroundColor3 = Color3.fromRGB(12, 18, 28),
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
-		Position = UDim2.fromOffset(8, 13 + (index - 1) * 39),
-		Size = UDim2.new(1, -16, 0, 34),
+		LayoutOrder = index,
+		Size = UDim2.new(1, -24, 0, 34),
 		Text = name,
 		TextColor3 = MUTED,
 		TextSize = 9,
-		ZIndex = 12,
-	}, side)
+		ZIndex = 13,
+	}, navScroll)
 	corner(nav, 9)
 	stroke(nav, Color3.fromRGB(100, 138, 181), 1, 0.8)
 	navButtons[name] = nav
