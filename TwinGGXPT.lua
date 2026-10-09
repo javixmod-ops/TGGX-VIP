@@ -649,21 +649,31 @@ local root = create("Frame", {
 }, gui)
 corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
+local menuBackgroundClip = create("CanvasGroup", {
+	Name = "MenuBackgroundClip",
+	Active = false,
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	Position = UDim2.fromScale(0, 0),
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 11,
+}, root)
+corner(menuBackgroundClip, 20)
+-- El asset es vertical; se escala al ancho del menú y se baja para centrar el rostro.
 local menuBackground = create("ImageLabel", {
 	Name = "MenuBackground",
 	Active = false,
 	BackgroundColor3 = SURFACE,
-	BackgroundTransparency = 0,
+	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	Image = "rbxassetid://119068690148483",
 	ImageColor3 = WHITE,
 	ImageTransparency = 0.10,
-	Position = UDim2.fromScale(0, 0),
-	ScaleType = Enum.ScaleType.Crop,
-	Size = UDim2.fromScale(1, 1),
+	Position = UDim2.new(0, 0, -0.45, 0),
+	ScaleType = Enum.ScaleType.Fit,
+	Size = UDim2.new(1, 0, 3.19, 0),
 	ZIndex = 11,
-}, root)
-corner(menuBackground, 20)
+}, menuBackgroundClip)
 local menuBackgroundShade = create("Frame", {
 	Name = "MenuBackgroundShade",
 	Active = false,
