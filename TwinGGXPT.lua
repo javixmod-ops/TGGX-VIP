@@ -643,8 +643,8 @@ local root = create("Frame", {
 	BackgroundTransparency = 0,
 	BorderSizePixel = 0,
 	ClipsDescendants = true,
-	Position = UDim2.new(0.5, -228, 0.5, -190),
-	Size = UDim2.fromOffset(456, 380),
+	Position = UDim2.new(0.5, -228, 0.5, -154),
+	Size = UDim2.fromOffset(456, 308),
 	ZIndex = 10,
 }, gui)
 corner(root, 20)
@@ -888,21 +888,39 @@ local function sectionTitle(parent, titleText, subtitle)
 	label(parent, titleText, UDim2.fromOffset(16, 29), UDim2.new(1, -32, 0, 28), Enum.Font.GothamBold, WHITE, 18)
 end
 
+local function updatePageCanvas(page)
+	local viewportHeight = page.AbsoluteSize.Y
+	local measuredHeight = viewportHeight > 0 and viewportHeight or 260
+	local contentBottom = 0
+	for _, child in ipairs(page:GetChildren()) do
+		if child:IsA("GuiObject") then
+			local childTop = child.Position.Y.Scale * measuredHeight + child.Position.Y.Offset
+			local childHeight = child.Size.Y.Scale * measuredHeight + child.Size.Y.Offset
+			local childBottom = childTop + childHeight * (1 - child.AnchorPoint.Y)
+			contentBottom = math.max(contentBottom, childBottom)
+		end
+	end
+	page.CanvasSize = UDim2.new(1, 0, 0, math.max(viewportHeight, math.ceil(contentBottom + 12)))
+end
+
 local function makePage(name)
 	local page = create("ScrollingFrame", {
 		Active = true,
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		AutomaticCanvasSize = Enum.AutomaticSize.None,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		ScrollBarImageColor3 = ACCENT,
-		ScrollBarImageTransparency = 0.2,
-		ScrollBarThickness = 4,
+		ScrollBarImageTransparency = 0,
+		ScrollBarThickness = 5,
+		ScrollingEnabled = true,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		Size = UDim2.fromScale(1, 1),
 		Visible = false,
 		ZIndex = 12,
 	}, content)
+	page.ElasticBehavior = Enum.ElasticBehavior.Never
+	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() updatePageCanvas(page) end)
 	pageFrames[name] = page
 	return page
 end
@@ -1845,6 +1863,7 @@ refreshPage = function()
 	renderMiscPage()
 	renderMusicPage()
 	renderColorsPage()
+	for _, page in pairs(pageFrames) do updatePageCanvas(page) end
 	showPage(state.page)
 	title.Text = t("title")
 	local navKeys = {AIMBOT = "pageAim", EPS = "pageEps", FOV = "pageFov", HITBOX = "pageHitbox", PLAYER = "pagePlayer", MISC = "pageMisc", MUSIC = "pageMusic", COLORS = "pageColors"}
@@ -1854,29 +1873,37 @@ end
 local navOrder = {"AIMBOT", "EPS", "FOV", "HITBOX", "PLAYER", "MISC", "MUSIC", "COLORS"}
 local navScroll = create("ScrollingFrame", {
 	Active = true,
-	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	AutomaticCanvasSize = Enum.AutomaticSize.None,
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	CanvasSize = UDim2.new(0, 0, 0, 0),
 	Position = UDim2.fromScale(0, 0),
 	ScrollBarImageColor3 = ACCENT,
-	ScrollBarImageTransparency = 0.2,
-	ScrollBarThickness = 3,
+	ScrollBarImageTransparency = 0,
+	ScrollBarThickness = 4,
+	ScrollingEnabled = true,
 	ScrollingDirection = Enum.ScrollingDirection.Y,
-	Size = UDim2.fromScale(1, 1),
+	Size = UDim2.new(1, 0, 1, -22),
 	ZIndex = 12,
 }, side)
+navScroll.ElasticBehavior = Enum.ElasticBehavior.Never
 create("UIPadding", {
 	PaddingBottom = UDim.new(0, 10),
 	PaddingLeft = UDim.new(0, 8),
 	PaddingRight = UDim.new(0, 9),
 	PaddingTop = UDim.new(0, 13),
 }, navScroll)
-create("UIListLayout", {
+local navLayout = create("UIListLayout", {
 	HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	Padding = UDim.new(0, 5),
 	SortOrder = Enum.SortOrder.LayoutOrder,
 }, navScroll)
+local function updateNavigationCanvas()
+	local listHeight = navLayout.AbsoluteContentSize.Y
+	if listHeight <= 0 then listHeight = #navOrder * 34 + math.max(#navOrder - 1, 0) * 5 end
+	navScroll.CanvasSize = UDim2.new(1, 0, 0, math.max(navScroll.AbsoluteSize.Y, math.ceil(listHeight + 23)))
+end
+navLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateNavigationCanvas)
 for index, name in ipairs(navOrder) do
 	local nav = create("TextButton", {
 		AutoButtonColor = false,
@@ -1895,6 +1922,18 @@ for index, name in ipairs(navOrder) do
 	navButtons[name] = nav
 	nav.Activated:Connect(function() showPage(name) end)
 end
+task.defer(updateNavigationCanvas)
+create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.RobotoMono,
+	Position = UDim2.new(0, 4, 1, -18),
+	Size = UDim2.new(1, -8, 0, 14),
+	Text = "DESLIZA ↑↓",
+	TextColor3 = MUTED,
+	TextSize = 6,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	ZIndex = 13,
+}, side)
 
 -- Ventana principal y contador arrastrables.
 local function makeDraggable(handle, frame)
@@ -1924,7 +1963,7 @@ end
 makeDraggable(topbar, root)
 makeDraggable(hud, hud)
 
-local fullPanelSize = UDim2.fromOffset(456, 380)
+local fullPanelSize = UDim2.fromOffset(456, 308)
 local miniPanelSize = UDim2.fromOffset(46, 46)
 local panelAnimating = false
 local panelMinimized = false
