@@ -44,6 +44,7 @@ local state = {
 	cameraFovSet = false,
 	showFov = true,
 	fovRadius = 175,
+	fovShape = "Circle",
 	epsLines = false,
 	epsBoxes = false,
 	epsSkeleton = false,
@@ -103,6 +104,8 @@ local translations = {
 		nearestLine = "LÍNEA CUERPO A CUERPO",
 		health = "EPS VIDA", distance = "EPS METROS", counter = "CONTADOR DE JUGADORES",
 		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraFov = "FOV CÁMARA", language = "IDIOMA",
+		fovShape = "FORMA DEL FOV", shapeCircle = "CÍRCULO", shapeSquare = "CUADRADO", shapeTriangle = "TRIÁNGULO", shapeDiamond = "ROMBO", shapePentagon = "PENTÁGONO", shapeHexagon = "HEXÁGONO",
+		fovShapeHint = "EL ÁREA DE AIMBOT USA LA FIGURA ELEGIDA.", fovTargetHint = "SOLO ADQUIERE OBJETIVOS DENTRO DE LA FORMA Y CON LÍNEA DE VISIÓN.",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO", aimLocked = "BLOQUEO A UN OBJETIVO", aimLostWall = "SE DEJÓ DE SEGUIR: DETRÁS DE UNA PARED", aimHint = "OBJETIVO MÁS CERCANO · DENTRO DEL FOV · SIN PAREDES",
 		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMAÑO PROPIO", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
@@ -116,6 +119,8 @@ local translations = {
 		nearestLine = "LINE TO NEAREST TARGET",
 		health = "ESP HEALTH", distance = "ESP DISTANCE", counter = "PLAYER COUNTER",
 		visible = "SHOW FOV", radius = "FOV RADIUS", cameraFov = "CAMERA FOV", language = "LANGUAGE",
+		fovShape = "FOV SHAPE", shapeCircle = "CIRCLE", shapeSquare = "SQUARE", shapeTriangle = "TRIANGLE", shapeDiamond = "DIAMOND", shapePentagon = "PENTAGON", shapeHexagon = "HEXAGON",
+		fovShapeHint = "AIM AREA FOLLOWS THE SELECTED SHAPE.", fovTargetHint = "ONLY ACQUIRES TARGETS INSIDE THE SHAPE WITH LINE OF SIGHT.",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
 		noTarget = "NO TARGET", target = "TARGET", aimLocked = "LOCKED ON TARGET", aimLostWall = "STOPPED: TARGET BEHIND WALL", aimHint = "NEAREST TARGET · INSIDE FOV · NO WALLS",
 		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", ownHitboxSize = "OWN HITBOX SIZE", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
@@ -129,11 +134,30 @@ local translations = {
 		nearestLine = "LINHA AO ALVO MAIS PRÓXIMO",
 		health = "VIDA ESP", distance = "DISTÂNCIA ESP", counter = "CONTADOR DE JOGADORES",
 		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraFov = "FOV DA CÂMERA", language = "IDIOMA",
+		fovShape = "FORMA DO FOV", shapeCircle = "CÍRCULO", shapeSquare = "QUADRADO", shapeTriangle = "TRIÂNGULO", shapeDiamond = "LOSANGO", shapePentagon = "PENTÁGONO", shapeHexagon = "HEXÁGONO",
+		fovShapeHint = "A ÁREA DE MIRA SEGUE A FORMA ESCOLHIDA.", fovTargetHint = "SÓ ADQUIRE ALVOS DENTRO DA FORMA E COM LINHA DE VISÃO.",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
 		noTarget = "SEM ALVO", target = "ALVO", aimLocked = "ALVO BLOQUEADO", aimLostWall = "PAROU: ALVO ATRÁS DE UMA PAREDE", aimHint = "ALVO VISÍVEL MAIS PRÓXIMO DENTRO DO FOV",
 		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMANHO PRÓPRIO", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
 		speed = "VELOCIDADE", resetSpeed = "RESET VELOCIDADE", superJump = "SUPER PULO", resetJump = "RESET PULO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
+}
+
+local FOV_SHAPES = {
+	Circle = {sides = 0, startAngle = -90},
+	Square = {sides = 4, startAngle = -45},
+	Triangle = {sides = 3, startAngle = -90},
+	Diamond = {sides = 4, startAngle = 0},
+	Pentagon = {sides = 5, startAngle = -90},
+	Hexagon = {sides = 6, startAngle = -90},
+}
+local FOV_SHAPE_OPTIONS = {
+	{id = "Circle", key = "shapeCircle"},
+	{id = "Square", key = "shapeSquare"},
+	{id = "Triangle", key = "shapeTriangle"},
+	{id = "Diamond", key = "shapeDiamond"},
+	{id = "Pentagon", key = "shapePentagon"},
+	{id = "Hexagon", key = "shapeHexagon"},
 }
 
 local old = playerGui:FindFirstChild("TwinGGXPT")
@@ -484,6 +508,7 @@ local fovCircle = create("Frame", {
 }, gui)
 corner(fovCircle, 999)
 stroke(fovCircle, ACCENT, 1.4, 0.15)
+local fovShapeEdges = {}
 
 local aimToast = create("Frame", {
 	AnchorPoint = Vector2.new(1, 0),
@@ -977,6 +1002,78 @@ local function viewportToGuiPoint(camera, projected)
 	)
 end
 
+for index = 1, 6 do
+	local edge = create("Frame", {
+		Active = false,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = ACCENT,
+		BackgroundTransparency = 0.15,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.fromOffset(0, 2),
+		Visible = false,
+		ZIndex = 25,
+	}, gui)
+	corner(edge, 2)
+	fovShapeEdges[index] = edge
+end
+
+local function getFovShapeVertices(center, radius, shapeName)
+	local definition = FOV_SHAPES[shapeName]
+	if not definition or definition.sides < 3 then return {} end
+	local vertices = {}
+	for index = 1, definition.sides do
+		local angle = math.rad(definition.startAngle + (index - 1) * 360 / definition.sides)
+		vertices[index] = center + Vector2.new(math.cos(angle), math.sin(angle)) * radius
+	end
+	return vertices
+end
+
+local function isPointInsideFov(point, center)
+	if state.fovShape == "Circle" then
+		return (point - center).Magnitude <= state.fovRadius
+	end
+	local vertices = getFovShapeVertices(center, state.fovRadius, state.fovShape)
+	if #vertices < 3 then return (point - center).Magnitude <= state.fovRadius end
+	local inside = false
+	local previous = vertices[#vertices]
+	for _, current in ipairs(vertices) do
+		if (current.Y > point.Y) ~= (previous.Y > point.Y) then
+			local crossingX = (previous.X - current.X) * (point.Y - current.Y) / (previous.Y - current.Y) + current.X
+			if point.X < crossingX then inside = not inside end
+		end
+		previous = current
+	end
+	return inside
+end
+
+local function updateFovDisplay(center)
+	if not center then
+		local camera = workspace.CurrentCamera
+		if not camera then
+			fovCircle.Visible = false
+			for _, edge in ipairs(fovShapeEdges) do edge.Visible = false end
+			return
+		end
+		center = fovCenter(camera)
+	end
+	fovCircle.Position = UDim2.fromOffset(center.X, center.Y)
+	fovCircle.Size = UDim2.fromOffset(state.fovRadius * 2, state.fovRadius * 2)
+	fovCircle.Visible = state.showFov and state.fovShape == "Circle"
+	for _, edge in ipairs(fovShapeEdges) do edge.Visible = false end
+	if not state.showFov or state.fovShape == "Circle" then return end
+	local vertices = getFovShapeVertices(center, state.fovRadius, state.fovShape)
+	for index, first in ipairs(vertices) do
+		local second = vertices[index % #vertices + 1]
+		local delta = second - first
+		local edge = fovShapeEdges[index]
+		edge.Position = UDim2.fromOffset((first.X + second.X) * 0.5, (first.Y + second.Y) * 0.5)
+		edge.Size = UDim2.fromOffset(delta.Magnitude, 2)
+		edge.Rotation = math.deg(math.atan2(delta.Y, delta.X))
+		edge.Visible = true
+	end
+end
+
 local fovAdjusting = false
 local function adjustFovToDevice()
 	if fovAdjusting then return end
@@ -990,7 +1087,7 @@ local function adjustFovToDevice()
 	local camera = workspace.CurrentCamera
 	if camera then
 		local center = fovCenter(camera)
-		fovCircle.Position = UDim2.fromOffset(center.X, center.Y)
+		updateFovDisplay(center)
 	end
 	local device = detectDevice()
 	local icon = device == "MOBILE" and "📱" or (device == "CONSOLE" and "🎮" or "💻")
@@ -1029,7 +1126,7 @@ local function getAimCandidate(camera, targetPlayer)
 	local projected, onScreen = camera:WorldToViewportPoint(head.Position)
 	if not onScreen or projected.Z <= 0 then return nil, nil, nil, nil, "offscreen" end
 	local guiPoint = viewportToGuiPoint(camera, projected)
-	if (guiPoint - fovCenter(camera)).Magnitude > state.fovRadius then
+	if not isPointInsideFov(guiPoint, fovCenter(camera)) then
 		return nil, nil, nil, nil, "outside_fov"
 	end
 	if not lineOfSight(character, head.Position) then return nil, nil, nil, nil, "occluded" end
@@ -1201,15 +1298,57 @@ end
 local function setFovRadius(radius)
 	state.fovRadius = math.clamp(math.floor(radius), CONFIG.MinFovRadius, CONFIG.MaxFovRadius)
 	fovCircle.Size = UDim2.fromOffset(state.fovRadius * 2, state.fovRadius * 2)
+	updateFovDisplay()
 end
 
 local function renderFovPage()
 	local page = makePage("FOV")
-	sectionTitle(page, "FOV", "CÍRCULO DE ASISTENCIA Y ÁNGULO DE CÁMARA")
+	sectionTitle(page, "FOV", "FORMA, RADIO Y ÁNGULO DE CÁMARA")
 	toggle(page, 70, t("visible"), function() return state.showFov end, function(value)
 		state.showFov = value
-		fovCircle.Visible = value
+		updateFovDisplay()
 	end)
+	label(page, t("fovShape"), UDim2.fromOffset(16, 108), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 10)
+	local shapeButtons = {}
+	local function updateShapeButtons()
+		for shapeName, shapeButton in pairs(shapeButtons) do
+			local selected = state.fovShape == shapeName
+			shapeButton.BackgroundColor3 = selected and ACCENT or SURFACE_2
+			shapeButton.TextColor3 = selected and getAccentTextColor(ACCENT) or WHITE
+			local outline = shapeButton:FindFirstChildOfClass("UIStroke")
+			if outline then
+				outline.Color = selected and ACCENT or Color3.fromRGB(68, 84, 105)
+				outline.Transparency = selected and 0.12 or 0.55
+			end
+		end
+	end
+	for index, option in ipairs(FOV_SHAPE_OPTIONS) do
+		local column = (index - 1) % 3
+		local row = math.floor((index - 1) / 3)
+		local shapeName = option.id
+		local selected = state.fovShape == shapeName
+		local shapeButton = create("TextButton", {
+			AutoButtonColor = false,
+			BackgroundColor3 = selected and ACCENT or SURFACE_2,
+			BorderSizePixel = 0,
+			Font = Enum.Font.GothamMedium,
+			Position = UDim2.new(column / 3, 16 - column * 8, 0, 130 + row * 31),
+			Size = UDim2.new(1 / 3, -15, 0, 27),
+			Text = t(option.key),
+			TextColor3 = selected and getAccentTextColor(ACCENT) or WHITE,
+			TextSize = 8,
+			ZIndex = 13,
+		}, page)
+		corner(shapeButton, 6)
+		stroke(shapeButton, selected and ACCENT or Color3.fromRGB(68, 84, 105), 1, selected and 0.12 or 0.55)
+		shapeButtons[shapeName] = shapeButton
+		shapeButton.Activated:Connect(function()
+			state.fovShape = shapeName
+			updateShapeButtons()
+			updateFovDisplay()
+		end)
+	end
+	label(page, t("fovShapeHint"), UDim2.fromOffset(16, 190), UDim2.new(1, -32, 0, 24), Enum.Font.RobotoMono, MUTED, 7)
 
 	local function addSlider(titleY, barY, titleText, minValue, maxValue, currentValue, suffix, onChanged)
 		label(page, titleText, UDim2.fromOffset(16, titleY), UDim2.new(1, -88, 0, 19), Enum.Font.GothamMedium, WHITE, 10)
@@ -1269,20 +1408,20 @@ local function renderFovPage()
 		end)
 	end
 
-	addSlider(112, 143, t("radius"), CONFIG.MinFovRadius, CONFIG.MaxFovRadius, state.fovRadius, " px", setFovRadius)
-	label(page, "SOLO ADQUIERE UN OBJETIVO DENTRO DEL CÍRCULO Y CON LÍNEA DE VISIÓN.", UDim2.fromOffset(16, 162), UDim2.new(1, -32, 0, 26), Enum.Font.RobotoMono, MUTED, 7)
+	addSlider(224, 255, t("radius"), CONFIG.MinFovRadius, CONFIG.MaxFovRadius, state.fovRadius, " px", setFovRadius)
+	label(page, t("fovTargetHint"), UDim2.fromOffset(16, 275), UDim2.new(1, -32, 0, 28), Enum.Font.RobotoMono, MUTED, 7)
 
 	local camera = workspace.CurrentCamera
 	if camera then
 		state.cameraFov = math.clamp(math.floor(camera.FieldOfView + 0.5), CONFIG.MinCameraFov, CONFIG.MaxCameraFov)
 	end
-	addSlider(198, 229, t("cameraFov"), CONFIG.MinCameraFov, CONFIG.MaxCameraFov, state.cameraFov, "°", function(value)
+	addSlider(318, 349, t("cameraFov"), CONFIG.MinCameraFov, CONFIG.MaxCameraFov, state.cameraFov, "°", function(value)
 		state.cameraFov = value
 		state.cameraFovSet = true
 		local currentCamera = workspace.CurrentCamera
 		if currentCamera then currentCamera.FieldOfView = value end
 	end)
-	label(page, "FOV DE CÁMARA CAMBIA EL ÁNGULO DE VISTA, NO LA DISTANCIA MÁXIMA DEL MAPA.", UDim2.fromOffset(16, 247), UDim2.new(1, -32, 0, 34), Enum.Font.RobotoMono, MUTED, 7)
+	label(page, "FOV DE CÁMARA CAMBIA EL ÁNGULO DE VISTA, NO LA DISTANCIA MÁXIMA DEL MAPA.", UDim2.fromOffset(16, 368), UDim2.new(1, -32, 0, 36), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function deviceIcon()
@@ -1753,7 +1892,7 @@ local function renderColorsPage()
 	stroke(preview, ACCENT, 1, 0.08)
 	local hexLabel = label(page, "#46C7FF", UDim2.fromOffset(218, 143), UDim2.fromOffset(104, 18), Enum.Font.RobotoMono, WHITE, 9)
 	hexLabel.TextXAlignment = Enum.TextXAlignment.Center
-	label(page, "APLICA ESTE COLOR AL GUI, A LAS LÍNEAS ESP Y AL CÍRCULO FOV.", UDim2.fromOffset(218, 166), UDim2.fromOffset(104, 52), Enum.Font.RobotoMono, MUTED, 7)
+	label(page, "APLICA ESTE COLOR AL GUI, A LAS LÍNEAS ESP Y AL FOV.", UDim2.fromOffset(218, 166), UDim2.fromOffset(104, 52), Enum.Font.RobotoMono, MUTED, 7)
 	local resetColor = create("TextButton", {
 		AutoButtonColor = false,
 		BackgroundColor3 = SURFACE_2,
@@ -2272,7 +2411,7 @@ local function updateFrame(deltaTime)
 	end
 	cameraWithSetFov = camera
 	local center = fovCenter(camera)
-	fovCircle.Position = UDim2.fromOffset(center.X, center.Y)
+	updateFovDisplay(center)
 	hudText.Text = (state.language == "ES" and "JUGADORES: " or state.language == "PT" and "JOGADORES: " or "PLAYERS: ") .. #Players:GetPlayers()
 	local performance = content:FindFirstChild("Performance", true)
 	local targetStatus = content:FindFirstChild("TargetName", true)
