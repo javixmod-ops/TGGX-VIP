@@ -1,7 +1,7 @@
 -- TWIN GG XPT · LOCAL SOLO · HITBOX INTEGRADA
 -- Colócalo en StarterPlayer > StarterPlayerScripts.
 -- Diseñado como mecánica de tu propio shooter. No modifica impactos ni contiene Silent Aimbot.
--- Sin compras, claves ni GUI externa de Hitbox.
+-- Sin compras ni GUI externa de Hitbox.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -68,6 +68,7 @@ local state = {
 	currentMusicId = "",
 	currentMusicName = "",
 }
+local accessTier = nil
 
 -- El Sound se crea desde este LocalScript y vive en SoundService solo en este cliente.
 local previousMusic = SoundService:FindFirstChild("TwinGGXPT_LocalMusic")
@@ -162,6 +163,8 @@ local FOV_SHAPE_OPTIONS = {
 
 local old = playerGui:FindFirstChild("TwinGGXPT")
 if old then old:Destroy() end
+local oldAccess = playerGui:FindFirstChild("TwinGGXPT_KeyAccess")
+if oldAccess then oldAccess:Destroy() end
 
 local function t(key)
 	return translations[state.language][key] or key
@@ -495,6 +498,33 @@ gui = create("ScreenGui", {
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
+
+local vipNoticeToken = 0
+local vipNotice = create("TextLabel", {
+	AnchorPoint = Vector2.new(0.5, 0),
+	BackgroundColor3 = SURFACE_2,
+	BorderSizePixel = 0,
+	Font = Enum.Font.GothamBold,
+	Position = UDim2.new(0.5, 0, 0, 14),
+	Size = UDim2.fromOffset(370, 48),
+	Text = "",
+	TextColor3 = WHITE,
+	TextSize = 12,
+	TextWrapped = true,
+	Visible = false,
+	ZIndex = 250,
+}, gui)
+corner(vipNotice, 10)
+stroke(vipNotice, ACCENT, 1.2, 0.2)
+local function showVipMessage()
+	vipNoticeToken += 1
+	local token = vipNoticeToken
+	vipNotice.Text = "Conpra la versión VIP con JxVI mod para utilizar esta opciones"
+	vipNotice.Visible = true
+	task.delay(3, function()
+		if token == vipNoticeToken and vipNotice.Parent then vipNotice.Visible = false end
+	end)
+end
 
 -- Círculo FOV. Solo es una ayuda visual: no altera los impactos del arma.
 local fovCircle = create("Frame", {
@@ -1991,6 +2021,10 @@ local function renderColorsPage()
 end
 
 local function showPage(pageName)
+	if accessTier == "FREE" and pageName ~= "AIMBOT" and pageName ~= "EPS" then
+		showVipMessage()
+		return
+	end
 	state.page = pageName
 	for name, frame in pairs(pageFrames) do
 		frame.Visible = name == pageName
@@ -2582,8 +2616,123 @@ end)
 refreshPage()
 
 
--- Inicio directo de Twin GG XPT, sin pantalla ni validación de key.
-gui.Enabled = true
+-- Pantalla de acceso independiente; el menú permanece oculto hasta validar la clave.
+local accessGui = create("ScreenGui", {
+	Name = "TwinGGXPT_KeyAccess",
+	DisplayOrder = 1000,
+	IgnoreGuiInset = true,
+	ResetOnSpawn = false,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+}, playerGui)
+local accessBackdrop = create("Frame", {
+	Active = true,
+	BackgroundColor3 = Color3.fromRGB(4, 8, 14),
+	BackgroundTransparency = 0.12,
+	BorderSizePixel = 0,
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 1,
+}, accessGui)
+local accessCard = create("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	BackgroundColor3 = SURFACE,
+	BorderSizePixel = 0,
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(340, 240),
+	ZIndex = 2,
+}, accessBackdrop)
+corner(accessCard, 14)
+stroke(accessCard, ACCENT, 1.4, 0.15)
+create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamBold,
+	Position = UDim2.fromOffset(18, 14),
+	Size = UDim2.new(1, -36, 0, 28),
+	Text = "TWIN GG XPT · ACCESO",
+	TextColor3 = WHITE,
+	TextSize = 16,
+	ZIndex = 3,
+}, accessCard)
+create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamMedium,
+	Position = UDim2.fromOffset(18, 44),
+	Size = UDim2.new(1, -36, 0, 24),
+	Text = "INGRESA TU KEY PARA USAR EL MENÚ",
+	TextColor3 = MUTED,
+	TextSize = 9,
+	ZIndex = 3,
+}, accessCard)
+local keyInput = create("TextBox", {
+	BackgroundColor3 = SURFACE_2,
+	BorderSizePixel = 0,
+	ClearTextOnFocus = false,
+	Font = Enum.Font.RobotoMono,
+	PlaceholderColor3 = MUTED,
+	PlaceholderText = "Escribe tu key aquí",
+	Position = UDim2.fromOffset(18, 79),
+	Size = UDim2.new(1, -36, 0, 40),
+	Text = "",
+	TextColor3 = WHITE,
+	TextSize = 11,
+	ZIndex = 3,
+}, accessCard)
+corner(keyInput, 8)
+stroke(keyInput, Color3.fromRGB(68, 84, 105), 1, 0.3)
+local keyStatus = create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamMedium,
+	Position = UDim2.fromOffset(18, 166),
+	Size = UDim2.new(1, -36, 0, 22),
+	Text = "",
+	TextColor3 = RED,
+	TextSize = 10,
+	TextWrapped = true,
+	ZIndex = 3,
+}, accessCard)
+local unlockButton = create("TextButton", {
+	AutoButtonColor = true,
+	BackgroundColor3 = ACCENT,
+	BorderSizePixel = 0,
+	Font = Enum.Font.GothamBold,
+	Position = UDim2.fromOffset(18, 127),
+	Size = UDim2.new(1, -36, 0, 34),
+	Text = "ACTIVAR",
+	TextColor3 = getAccentTextColor(ACCENT),
+	TextSize = 11,
+	ZIndex = 3,
+}, accessCard)
+corner(unlockButton, 8)
+create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.RobotoMono,
+	Position = UDim2.fromOffset(18, 194),
+	Size = UDim2.new(1, -36, 0, 30),
+	Text = "FREE: AIMBOT + EPS    ·    VIP: MENÚ COMPLETO",
+	TextColor3 = MUTED,
+	TextSize = 8,
+	TextWrapped = true,
+	ZIndex = 3,
+}, accessCard)
+local function submitAccessKey()
+	local enteredKey = keyInput.Text:match("^%s*(.-)%s*$")
+	if enteredKey == "Free-Aimbot-JxVI-MOD-TGX" then
+		accessTier = "FREE"
+	elseif enteredKey == "VIP-AIMBOT-FF-JXVI-MOD-SZ10" then
+		accessTier = "VIP"
+	else
+		keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."
+		keyInput.Text = ""
+		return
+	end
+	isHitboxActive = accessTier == "VIP" and state.hitboxEnabled
+	showPage("AIMBOT")
+	gui.Enabled = true
+	accessGui:Destroy()
+end
+unlockButton.Activated:Connect(submitAccessKey)
+keyInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then submitAccessKey() end
+end)
 
 -- Bucle principal del expansor de Hitbox aportado por el usuario.
 -- La GUI solo actualiza isHitboxActive, hitboxSize y showVisualBox.
@@ -2601,8 +2750,8 @@ end
 
 RunService.RenderStepped:Connect(function()
 	-- Aplicar únicamente al jugador local; conservar la actualización del expansor remoto aparte.
-	updateLocalOwnHitbox(state.smallOwnHitbox)
-	if not isHitboxActive then return end
+	updateLocalOwnHitbox(accessTier == "VIP" and state.smallOwnHitbox)
+	if accessTier ~= "VIP" or not isHitboxActive then return end
 
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
