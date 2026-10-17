@@ -160,6 +160,64 @@ local FOV_SHAPE_OPTIONS = {
 	{id = "Hexagon", key = "shapeHexagon"},
 }
 
+-- La persistencia se gestiona en el servidor con DataStoreService.
+local CONFIG_REMOTE_NAME = "TwinGGXPT_ConfigRemote"
+local CONFIG_KEYS = {
+	"page", "language", "aimEnabled", "aimNotifications", "smoothAim", "cameraFov",
+	"cameraFovSet", "showFov", "fovRadius", "fovShape", "epsLines", "epsBoxes",
+	"epsSkeleton", "epsHealth", "epsDistance", "epsNearestLine", "hitboxEnabled",
+	"hitboxVisible", "smallOwnHitbox", "smallOwnHitboxSize", "showOwnHitbox",
+	"hitboxSize", "playerSpeed", "playerJump", "noclip", "antiLag", "musicVolume",
+	"currentMusicId", "currentMusicName",
+}
+local function loadSavedConfig()
+	local remote = ReplicatedStorage:WaitForChild(CONFIG_REMOTE_NAME, 15)
+	if not remote or not remote:IsA("RemoteFunction") then return end
+	local ok, saved = pcall(function() return remote:InvokeServer("load") end)
+	if not ok or type(saved) ~= "table" then return end
+	for _, key in ipairs(CONFIG_KEYS) do
+		local value = saved[key]
+		if value ~= nil then
+			if type(state[key]) == "boolean" and type(value) == "boolean" then
+				state[key] = value
+			elseif type(state[key]) == "number" and type(value) == "number" then
+				state[key] = value
+			elseif type(state[key]) == "string" and type(value) == "string" then
+				state[key] = value
+			end
+		end
+	end
+	local color = saved.accentColor
+	if type(color) == "table" and #color == 3 then
+		state.accentColor = Color3.new(math.clamp(tonumber(color[1]) or 0, 0, 1), math.clamp(tonumber(color[2]) or 0, 0, 1), math.clamp(tonumber(color[3]) or 0, 0, 1))
+	end
+	local validPages = {AIMBOT = true, EPS = true, FOV = true, HITBOX = true, PLAYER = true, MISC = true, MUSIC = true, COLORS = true}
+	if not validPages[state.page] then state.page = "AIMBOT" end
+	if state.language ~= "ES" and state.language ~= "EN" and state.language ~= "PT" then state.language = "ES" end
+	if not FOV_SHAPES[state.fovShape] then state.fovShape = "Circle" end
+	state.fovRadius = math.clamp(state.fovRadius, CONFIG.MinFovRadius, CONFIG.MaxFovRadius)
+	state.cameraFov = math.clamp(state.cameraFov, CONFIG.MinCameraFov, CONFIG.MaxCameraFov)
+	state.hitboxSize = math.clamp(state.hitboxSize, CONFIG.HitboxMinSize, CONFIG.HitboxMaxSize)
+	state.smallOwnHitboxSize = math.clamp(state.smallOwnHitboxSize, 0.1, 3)
+	state.playerSpeed = math.clamp(state.playerSpeed, 8, 80)
+	state.playerJump = math.clamp(state.playerJump, 50, 200)
+	state.musicVolume = math.clamp(state.musicVolume, 0, 1)
+	localMusicSound.Volume = state.musicVolume
+	if state.currentMusicId:match("^%d+$") then
+		localMusicSound.SoundId = "rbxassetid://" .. state.currentMusicId
+	end
+	hitboxSize = state.hitboxSize
+	isHitboxActive = state.hitboxEnabled
+	showVisualBox = state.hitboxVisible
+end
+local function getConfigSnapshot()
+	local saved = {}
+	for _, key in ipairs(CONFIG_KEYS) do saved[key] = state[key] end
+	saved.accentColor = {state.accentColor.R, state.accentColor.G, state.accentColor.B}
+	return saved
+end
+loadSavedConfig()
+
 local old = playerGui:FindFirstChild("TwinGGXPT")
 if old then old:Destroy() end
 
@@ -2580,8 +2638,22 @@ Players.PlayerRemoving:Connect(function(leaving)
 end)
 
 refreshPage()
-
-
+-- Guardado periódico en segundo plano; la interfaz y sus controles no cambian.
+task.spawn(function()
+	local remote = ReplicatedStorage:WaitForChild(CONFIG_REMOTE_NAME, 15)
+	if not remote or not remote:IsA("RemoteFunction") then return end
+	local HttpService = game:GetService("HttpService")
+	local lastSnapshot
+	while gui and gui.Parent do
+		local snapshot = getConfigSnapshot()
+		local ok, encoded = pcall(function() return HttpService:JSONEncode(snapshot) end)
+		if ok and encoded ~= lastSnapshot then
+			local callOk, saved = pcall(function() return remote:InvokeServer("save", snapshot) end)
+			if callOk and saved == true then lastSnapshot = encoded end
+		end
+		task.wait(5)
+	end
+end)
 -- Inicio directo de Twin GG XPT, sin pantalla ni validación de key.
 gui.Enabled = true
 
