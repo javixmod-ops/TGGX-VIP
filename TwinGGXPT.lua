@@ -69,6 +69,10 @@ local state = {
 	currentMusicName = "",
 }
 local accessTier = nil
+local trialExpiresAt = nil
+local trialCountdownLabel = nil
+local trialOriginalWalkSpeed, trialOriginalUseJumpPower, trialOriginalJumpPower, trialOriginalJumpHeight
+local trialOriginalCameraFov
 
 -- El Sound se crea desde este LocalScript y vive en SoundService solo en este cliente.
 local previousMusic = SoundService:FindFirstChild("TwinGGXPT_LocalMusic")
@@ -1582,6 +1586,8 @@ local function renderMiscPage()
 	discord.Activated:Connect(function()
 		discord.Text = "DISCORD: hqcNXBbet"
 	end)
+	trialCountdownLabel = label(page, "TIEMPO RESTANTE: --:--", UDim2.fromOffset(16, 264), UDim2.new(1, -32, 0, 22), Enum.Font.GothamBold, ACCENT, 10)
+	trialCountdownLabel.Visible = accessTier == "TRIAL"
 end
 
 -- IDs de audio del Creator Store mostrados gratuitos/publicados por el API oficial
@@ -2702,32 +2708,78 @@ local unlockButton = create("TextButton", {
 	ZIndex = 3,
 }, accessCard)
 corner(unlockButton, 8)
+local isSubmittingAccess = false
 create("TextLabel", {
 	BackgroundTransparency = 1,
 	Font = Enum.Font.RobotoMono,
 	Position = UDim2.fromOffset(18, 194),
 	Size = UDim2.new(1, -36, 0, 30),
-	Text = "FREE: AIMBOT + EPS    ·    VIP: MENÚ COMPLETO",
+	Text = "FREE: AIMBOT + EPS · VIP: MENÚ COMPLETO · TRIAL: 1 HORA",
 	TextColor3 = MUTED,
 	TextSize = 8,
 	TextWrapped = true,
 	ZIndex = 3,
 }, accessCard)
 local function submitAccessKey()
+	if isSubmittingAccess then return end
 	local enteredKey = keyInput.Text:match("^%s*(.-)%s*$")
 	if enteredKey == "Free-Aimbot-JxVI-MOD-TGX" then
 		accessTier = "FREE"
+		trialExpiresAt = nil
 	elseif enteredKey == "VIP-AIMBOT-FF-JXVI-MOD-SZ10" then
 		accessTier = "VIP"
+		trialExpiresAt = nil
 	else
-		keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."
-		keyInput.Text = ""
-		return
+		isSubmittingAccess = true
+		unlockButton.Active = false
+		unlockButton.Text = "VERIFICANDO..."
+		keyStatus.TextColor3 = MUTED
+		keyStatus.Text = "VERIFICANDO LA KEY DE PRUEBA..."
+		local trialRemote = ReplicatedStorage:WaitForChild("TwinGGXPT_TrialAccess", 8)
+		local callOk, response = false, nil
+		if trialRemote and trialRemote:IsA("RemoteFunction") then
+			callOk, response = pcall(function() return trialRemote:InvokeServer("redeemTrial", enteredKey) end)
+		end
+		isSubmittingAccess = false
+		unlockButton.Active = true
+		unlockButton.Text = "ACTIVAR"
+		if callOk and type(response) == "table" and (response.status == "activated" or response.status == "active") and type(response.expiresAt) == "number" and response.expiresAt > workspace:GetServerTimeNow() then
+			accessTier = "TRIAL"
+			trialExpiresAt = response.expiresAt
+			local humanoid = getLocalHumanoid()
+			if humanoid then
+				trialOriginalWalkSpeed = humanoid.WalkSpeed
+				trialOriginalUseJumpPower = humanoid.UseJumpPower
+				trialOriginalJumpPower = humanoid.JumpPower
+				trialOriginalJumpHeight = humanoid.JumpHeight
+			end
+			local camera = workspace.CurrentCamera
+			trialOriginalCameraFov = camera and camera.FieldOfView or nil
+		elseif callOk and type(response) == "table" and response.status == "used" then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "ESTA KEY YA FUE CANJEADA Y SU HORA TERMINÓ."
+			keyInput.Text = ""
+			return
+		elseif callOk and type(response) == "table" and response.status == "invalid" then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."
+			keyInput.Text = ""
+			return
+		else
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "NO SE PUDO VERIFICAR. REVISA EL SERVIDOR Y DATASTORE."
+			return
+		end
 	end
-	isHitboxActive = accessTier == "VIP" and state.hitboxEnabled
+	isHitboxActive = (accessTier == "VIP" or accessTier == "TRIAL") and state.hitboxEnabled
+	if trialCountdownLabel then trialCountdownLabel.Visible = accessTier == "TRIAL" end
 	showPage("AIMBOT")
 	gui.Enabled = true
-	accessGui:Destroy()
+	if accessTier == "TRIAL" then
+		accessGui.Enabled = false
+	else
+		accessGui:Destroy()
+	end
 end
 unlockButton.Activated:Connect(submitAccessKey)
 keyInput.FocusLost:Connect(function(enterPressed)
@@ -2748,10 +2800,79 @@ restoreLocalHitboxExpander = function()
 	end
 end
 
+local function closeExpiredTrial()
+	if accessTier ~= "TRIAL" then return end
+	accessTier = "EXPIRED"
+	state.aimEnabled = false
+	state.selectedTarget = nil
+	state.aimNotifications = false
+	state.showFov = false
+	state.epsLines = false
+	state.epsBoxes = false
+	state.epsSkeleton = false
+	state.epsHealth = false
+	state.epsDistance = false
+	state.epsNearestLine = false
+	local restoreHitbox = state.hitboxEnabled
+	state.hitboxEnabled = false
+	state.hitboxVisible = false
+	state.smallOwnHitbox = false
+	state.showOwnHitbox = false
+	state.noclip = false
+	if state.antiLag then setAntiLag(false) end
+	state.antiLag = false
+	state.cameraFovSet = false
+	state.playerSpeed = 16
+	state.playerJump = 50
+	isHitboxActive = false
+	restoreNoclip()
+	if trialOriginalWalkSpeed then
+		local humanoid = getLocalHumanoid()
+		if humanoid then
+			humanoid.WalkSpeed = trialOriginalWalkSpeed
+			humanoid.UseJumpPower = trialOriginalUseJumpPower
+			humanoid.JumpPower = trialOriginalJumpPower
+			humanoid.JumpHeight = trialOriginalJumpHeight
+		end
+	end
+	local camera = workspace.CurrentCamera
+	if camera and trialOriginalCameraFov then camera.FieldOfView = trialOriginalCameraFov end
+	updateLocalOwnHitbox(false)
+	if restoreHitbox then restoreLocalHitboxExpander() end
+	localMusicSound:Stop()
+	gui.Enabled = false
+	keyInput.Text = ""
+	keyStatus.TextColor3 = RED
+	keyStatus.Text = "LA PRUEBA TERMINÓ. INGRESA OTRA KEY DISPONIBLE."
+	accessGui.Enabled = true
+	if trialCountdownLabel then
+		trialCountdownLabel.Visible = false
+		trialCountdownLabel.Text = "PRUEBA TERMINADA"
+	end
+end
+
+task.spawn(function()
+	while true do
+		if accessTier == "TRIAL" and trialExpiresAt then
+			local secondsLeft = math.floor(trialExpiresAt - workspace:GetServerTimeNow())
+			if secondsLeft <= 0 then
+				closeExpiredTrial()
+				break
+			end
+			if trialCountdownLabel and trialCountdownLabel.Parent then
+				local minutes = math.floor(secondsLeft / 60)
+				local seconds = secondsLeft % 60
+				trialCountdownLabel.Text = string.format("TIEMPO RESTANTE: %02d:%02d", minutes, seconds)
+			end
+		end
+		task.wait(1)
+	end
+end)
+
 RunService.RenderStepped:Connect(function()
 	-- Aplicar únicamente al jugador local; conservar la actualización del expansor remoto aparte.
-	updateLocalOwnHitbox(accessTier == "VIP" and state.smallOwnHitbox)
-	if accessTier ~= "VIP" or not isHitboxActive then return end
+	updateLocalOwnHitbox((accessTier == "VIP" or accessTier == "TRIAL") and state.smallOwnHitbox)
+	if (accessTier ~= "VIP" and accessTier ~= "TRIAL") or not isHitboxActive then return end
 
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
