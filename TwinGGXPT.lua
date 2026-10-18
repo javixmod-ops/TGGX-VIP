@@ -110,6 +110,8 @@ local translations = {
 		fovShapeHint = "EL ÁREA DE AIMBOT USA LA FIGURA ELEGIDA.", fovTargetHint = "SOLO ADQUIERE OBJETIVOS DENTRO DE LA FORMA Y CON LÍNEA DE VISIÓN.",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
 		resetSection = "RESET SECCIÓN", resetAll = "RESTABLECER TODO",
+		helpValue = "VALOR ACTUAL", helpEnabled = "ACTIVADO", helpDisabled = "DESACTIVADO", helpNone = "SIN DEFINIR",
+		performance = "FPS / PING", music = "AUDIO LOCAL", musicVolume = "VOLUMEN", musicId = "ID DE AUDIO", musicTracks = "LISTA DE PISTAS", colorAccent = "COLOR DE ACENTO",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO", aimLocked = "BLOQUEO A UN OBJETIVO", aimLostWall = "SE DEJÓ DE SEGUIR: DETRÁS DE UNA PARED", aimHint = "OBJETIVO MÁS CERCANO · DENTRO DEL FOV · SIN PAREDES",
 		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMAÑO PROPIO", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
 		speed = "VELOCIDAD", resetSpeed = "RESET VELOCIDAD", superJump = "SUPER SALTO", resetJump = "RESET SUPER SALTO", noclip = "NOCLIP", antiLag = "ANTI LAG",
@@ -126,6 +128,8 @@ local translations = {
 		fovShapeHint = "AIM AREA FOLLOWS THE SELECTED SHAPE.", fovTargetHint = "ONLY ACQUIRES TARGETS INSIDE THE SHAPE WITH LINE OF SIGHT.",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
 		resetSection = "RESET SECTION", resetAll = "RESET ALL",
+		helpValue = "CURRENT VALUE", helpEnabled = "ON", helpDisabled = "OFF", helpNone = "NOT SET",
+		performance = "FPS / PING", music = "LOCAL AUDIO", musicVolume = "VOLUME", musicId = "AUDIO ID", musicTracks = "TRACK LIST", colorAccent = "ACCENT COLOR",
 		noTarget = "NO TARGET", target = "TARGET", aimLocked = "LOCKED ON TARGET", aimLostWall = "STOPPED: TARGET BEHIND WALL", aimHint = "NEAREST TARGET · INSIDE FOV · NO WALLS",
 		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", ownHitboxSize = "OWN HITBOX SIZE", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
 		speed = "SPEED", resetSpeed = "RESET SPEED", superJump = "SUPER JUMP", resetJump = "RESET JUMP", noclip = "NOCLIP", antiLag = "LOW GRAPHICS",
@@ -142,11 +146,55 @@ local translations = {
 		fovShapeHint = "A ÁREA DE MIRA SEGUE A FORMA ESCOLHIDA.", fovTargetHint = "SÓ ADQUIRE ALVOS DENTRO DA FORMA E COM LINHA DE VISÃO.",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
 		resetSection = "RESETAR SEÇÃO", resetAll = "RESETAR TUDO",
+		helpValue = "VALOR ATUAL", helpEnabled = "ATIVADO", helpDisabled = "DESATIVADO", helpNone = "NÃO DEFINIDO",
+		performance = "FPS / PING", music = "ÁUDIO LOCAL", musicVolume = "VOLUME", musicId = "ID DO ÁUDIO", musicTracks = "LISTA DE FAIXAS", colorAccent = "COR DE DESTAQUE",
 		noTarget = "SEM ALVO", target = "ALVO", aimLocked = "ALVO BLOQUEADO", aimLostWall = "PAROU: ALVO ATRÁS DE UMA PAREDE", aimHint = "ALVO VISÍVEL MAIS PRÓXIMO DENTRO DO FOV",
 		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMANHO PRÓPRIO", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
 		speed = "VELOCIDADE", resetSpeed = "RESET VELOCIDADE", superJump = "SUPER PULO", resetJump = "RESET PULO", noclip = "NOCLIP", antiLag = "ANTI LAG",
 	},
 }
+
+local OPTION_HELP = {
+	aimAssist = "Sigue suavemente al objetivo visible más cercano dentro del área FOV.",
+	notifications = "Muestra avisos cuando se adquiere o se pierde un objetivo.",
+	smoothAim = "Suaviza el movimiento de cámara hacia el objetivo; apagado usa una corrección más directa.",
+	hitbox = "Activa o desactiva el expansor local; el tamaño se ajusta en Tamaño de hitbox.",
+	showHitbox = "Muestra u oculta el cuadro visual que representa la hitbox.",
+	smallOwnHitbox = "Reduce la hitbox local de tu personaje al tamaño indicado abajo.",
+	showOwnHitbox = "Muestra u oculta el indicador visual de tu propia hitbox.",
+	ownHitboxSize = "Tamaño local de tu personaje, en studs. Usa − y + para cambiarlo.",
+	hitboxSize = "Tamaño aplicado por el expansor local, en studs.",
+	line = "Dibuja una línea visual hacia los objetivos detectados.",
+	box = "Dibuja un cuadro alrededor de cada objetivo detectado.",
+	skeleton = "Muestra un esqueleto visual sobre los objetivos detectados.",
+	health = "Muestra la vida de cada objetivo detectado.",
+	distance = "Muestra la distancia entre tu personaje y cada objetivo.",
+	counter = "Muestra u oculta el contador HUD de jugadores.",
+	nearestLine = "Traza una línea desde tu personaje al jugador o bot más cercano.",
+	visible = "Muestra u oculta el área FOV; por sí sola no cambia el alcance.",
+	fovShape = "Elige la forma usada para visualizar y filtrar el área FOV.",
+	radius = "Radio del área FOV expresado en píxeles.",
+	cameraFov = "Ángulo de visión de la cámara en grados; no cambia el tamaño del mapa.",
+	speed = "Velocidad de movimiento del personaje; el rango disponible es 8–80.",
+	superJump = "Fuerza del salto; el rango disponible es 50–200.",
+	noclip = "Desactiva temporalmente la colisión del personaje en este cliente.",
+	antiLag = "Reduce efectos visuales locales para mejorar rendimiento; cambia la apariencia.",
+	language = "Cambia el idioma de los textos del menú.",
+	performance = "Lectura local de cuadros por segundo (FPS) y ping de red, en milisegundos.",
+	music = "Inicia o detiene el audio local; solo tú lo escuchas.",
+	musicVolume = "Volumen del audio local, de 0 a 100 por ciento.",
+	musicId = "ID numérico de audio ingresado. Debe estar disponible y permitir reproducción.",
+	musicTracks = "Elige una pista de la lista para cargarla y reproducirla localmente.",
+	colorAccent = "Color usado por el menú, las líneas EPS y el indicador FOV.",
+}
+
+local HELP_KEY_BY_LABEL = {}
+for helpKey in pairs(OPTION_HELP) do
+	for _, languageStrings in pairs(translations) do
+		local optionLabel = languageStrings[helpKey]
+		if optionLabel then HELP_KEY_BY_LABEL[optionLabel] = helpKey end
+	end
+end
 
 local FOV_SHAPES = {
 	Circle = {sides = 0, startAngle = -90},
@@ -681,6 +729,110 @@ local root = create("Frame", {
 }, gui)
 corner(root, 20)
 stroke(root, ACCENT, 1.4, 0.12)
+local helpCard = create("Frame", {
+	AnchorPoint = Vector2.new(0.5, 1),
+	BackgroundColor3 = SURFACE_2,
+	BorderSizePixel = 0,
+	Position = UDim2.new(0.5, 0, 1, -10),
+	Size = UDim2.new(1, -24, 0, 84),
+	Visible = false,
+	ZIndex = 240,
+}, root)
+corner(helpCard, 11)
+stroke(helpCard, ACCENT, 1.1, 0.12)
+local helpTitle = create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamBold,
+	Position = UDim2.fromOffset(12, 7),
+	Size = UDim2.new(1, -48, 0, 15),
+	Text = "",
+	TextColor3 = ACCENT,
+	TextSize = 9,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 241,
+}, helpCard)
+local helpClose = create("TextButton", {
+	AutoButtonColor = false,
+	BackgroundColor3 = Color3.fromRGB(44, 58, 78),
+	BorderSizePixel = 0,
+	Font = Enum.Font.GothamBold,
+	Position = UDim2.new(1, -29, 0, 5),
+	Size = UDim2.fromOffset(21, 19),
+	Text = "X",
+	TextColor3 = WHITE,
+	TextSize = 9,
+	ZIndex = 242,
+}, helpCard)
+corner(helpClose, 6)
+local helpDescription = create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.GothamMedium,
+	Position = UDim2.fromOffset(12, 25),
+	Size = UDim2.new(1, -24, 0, 34),
+	Text = "",
+	TextColor3 = WHITE,
+	TextSize = 8,
+	TextWrapped = true,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextYAlignment = Enum.TextYAlignment.Top,
+	ZIndex = 241,
+}, helpCard)
+local helpValue = create("TextLabel", {
+	BackgroundTransparency = 1,
+	Font = Enum.Font.RobotoMono,
+	Position = UDim2.fromOffset(12, 62),
+	Size = UDim2.new(1, -24, 0, 14),
+	Text = "",
+	TextColor3 = ACCENT,
+	TextSize = 8,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 241,
+}, helpCard)
+helpClose.Activated:Connect(function() helpCard.Visible = false end)
+
+local function formatOptionHelpValue(value)
+	if type(value) == "boolean" then return value and t("helpEnabled") or t("helpDisabled") end
+	if type(value) == "number" then
+		if value == math.floor(value) then return tostring(value) end
+		return string.format("%.2f", value)
+	end
+	if typeof(value) == "Color3" then
+		return string.format("#%02X%02X%02X", math.floor(value.R * 255 + 0.5), math.floor(value.G * 255 + 0.5), math.floor(value.B * 255 + 0.5))
+	end
+	if value == nil or value == "" then return t("helpNone") end
+	return tostring(value)
+end
+
+local function showOptionHelp(key, currentValue)
+	helpTitle.Text = t(key)
+	helpDescription.Text = OPTION_HELP[key] or "Información de esta opción no disponible."
+	helpValue.Text = t("helpValue") .. ": " .. formatOptionHelpValue(currentValue)
+	helpCard.Visible = true
+end
+
+local function addOptionHelpButton(parent, y, key, getValue, xOffset, buttonSize)
+	local size = buttonSize or 18
+	local button = create("TextButton", {
+		AutoButtonColor = false,
+		BackgroundColor3 = SURFACE_2,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Position = UDim2.new(1, xOffset or -27, 0, y),
+		Size = UDim2.fromOffset(size, size),
+		Text = "?",
+		TextColor3 = ACCENT,
+		TextSize = 10,
+		ZIndex = 20,
+	}, parent)
+	corner(button, size / 2)
+	button.Activated:Connect(function()
+		local value
+		if getValue then value = getValue() end
+		showOptionHelp(key, value)
+	end)
+	return button
+end
+
 local menuBackgroundClip = create("CanvasGroup", {
 	Name = "MenuBackgroundClip",
 	Active = false,
@@ -898,6 +1050,8 @@ end
 
 local function toggle(parent, y, text, getValue, setValue)
 	label(parent, text, UDim2.fromOffset(16, y), UDim2.new(1, -95, 0, 30), Enum.Font.GothamMedium, WHITE, 11)
+	local helpKey = HELP_KEY_BY_LABEL[text]
+	if helpKey then addOptionHelpButton(parent, y + 7, helpKey, getValue, -79, 16) end
 	local knob = create("TextButton", {
 		AutoButtonColor = false,
 		BackgroundColor3 = getValue() and GREEN or Color3.fromRGB(67, 81, 101),
@@ -1241,7 +1395,8 @@ local function renderHitboxPage()
 		setHitboxStatus(value and "MOSTRANDO SOLO TU HITBOX" or "VISTA DE TU HITBOX DESACTIVADA", value and ACCENT or MUTED)
 	end)
 
-	smallOwnHitboxSizeLabel = label(page, t("ownHitboxSize") .. ": " .. string.format("%.1f studs", state.smallOwnHitboxSize), UDim2.fromOffset(16, 201), UDim2.new(1, -112, 0, 24), Enum.Font.GothamMedium, WHITE, 10)
+	smallOwnHitboxSizeLabel = label(page, t("ownHitboxSize") .. ": " .. string.format("%.1f studs", state.smallOwnHitboxSize), UDim2.fromOffset(16, 201), UDim2.new(1, -160, 0, 24), Enum.Font.GothamMedium, WHITE, 10)
+	addOptionHelpButton(page, 204, "ownHitboxSize", function() return string.format("%.1f studs", state.smallOwnHitboxSize) end, -140, 16)
 	local function makeOwnSizeButton(text, xOffset, delta)
 		local button = create("TextButton", {
 			Active = true, AutoButtonColor = false, BackgroundColor3 = SURFACE_2, BorderSizePixel = 0,
@@ -1254,7 +1409,8 @@ local function renderHitboxPage()
 	makeOwnSizeButton("−", -96, -OWN_HITBOX_SIZE_STEP)
 	makeOwnSizeButton("+", -52, OWN_HITBOX_SIZE_STEP)
 
-	label(page, t("hitboxSize"), UDim2.fromOffset(16, 235), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+	label(page, t("hitboxSize"), UDim2.fromOffset(16, 235), UDim2.new(1, -152, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+	addOptionHelpButton(page, 236, "hitboxSize", function() return string.format("%.1f studs", state.hitboxSize) end, -132, 16)
 	local valueText = label(page, string.format("%.1f studs", state.hitboxSize), UDim2.new(1, -108, 0, 235), UDim2.fromOffset(92, 18), Enum.Font.RobotoMono, ACCENT, 9)
 	valueText.TextXAlignment = Enum.TextXAlignment.Right
 	local bar = create("Frame", {
@@ -1334,7 +1490,8 @@ local function renderFovPage()
 		state.showFov = value
 		updateFovDisplay()
 	end)
-	label(page, t("fovShape"), UDim2.fromOffset(16, 108), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 10)
+	label(page, t("fovShape"), UDim2.fromOffset(16, 108), UDim2.new(1, -56, 0, 18), Enum.Font.GothamMedium, WHITE, 10)
+	addOptionHelpButton(page, 108, "fovShape", function() return state.fovShape end, -30, 18)
 	local shapeButtons = {}
 	local function updateShapeButtons()
 		for shapeName, shapeButton in pairs(shapeButtons) do
@@ -1376,10 +1533,12 @@ local function renderFovPage()
 	end
 	label(page, t("fovShapeHint"), UDim2.fromOffset(16, 190), UDim2.new(1, -32, 0, 24), Enum.Font.RobotoMono, MUTED, 7)
 
-	local function addSlider(titleY, barY, titleText, minValue, maxValue, currentValue, suffix, onChanged)
-		label(page, titleText, UDim2.fromOffset(16, titleY), UDim2.new(1, -88, 0, 19), Enum.Font.GothamMedium, WHITE, 10)
-		local valueText = label(page, tostring(currentValue) .. suffix, UDim2.new(1, -72, 0, titleY), UDim2.fromOffset(56, 19), Enum.Font.RobotoMono, ACCENT, 9)
+	local function addSlider(titleY, barY, titleText, minValue, maxValue, currentValue, suffix, onChanged, getCurrentValue)
+		label(page, titleText, UDim2.fromOffset(16, titleY), UDim2.new(1, -118, 0, 19), Enum.Font.GothamMedium, WHITE, 10)
+		local valueText = label(page, tostring(currentValue) .. suffix, UDim2.new(1, -96, 0, titleY), UDim2.fromOffset(68, 19), Enum.Font.RobotoMono, ACCENT, 9)
 		valueText.TextXAlignment = Enum.TextXAlignment.Right
+		local helpKey = HELP_KEY_BY_LABEL[titleText]
+		if helpKey then addOptionHelpButton(page, titleY + 1, helpKey, function() return tostring(getCurrentValue()) .. suffix end, -24, 16) end
 		local bar = create("Frame", {
 			Active = true,
 			BackgroundColor3 = Color3.fromRGB(56, 70, 92),
@@ -1434,7 +1593,7 @@ local function renderFovPage()
 		end)
 	end
 
-	addSlider(224, 255, t("radius"), CONFIG.MinFovRadius, CONFIG.MaxFovRadius, state.fovRadius, " px", setFovRadius)
+	addSlider(224, 255, t("radius"), CONFIG.MinFovRadius, CONFIG.MaxFovRadius, state.fovRadius, " px", setFovRadius, function() return state.fovRadius end)
 	label(page, t("fovTargetHint"), UDim2.fromOffset(16, 275), UDim2.new(1, -32, 0, 28), Enum.Font.RobotoMono, MUTED, 7)
 
 	local camera = workspace.CurrentCamera
@@ -1446,7 +1605,7 @@ local function renderFovPage()
 		state.cameraFovSet = true
 		local currentCamera = workspace.CurrentCamera
 		if currentCamera then currentCamera.FieldOfView = value end
-	end)
+	end, function() return state.cameraFov end)
 	label(page, "FOV DE CÁMARA CAMBIA EL ÁNGULO DE VISTA, NO LA DISTANCIA MÁXIMA DEL MAPA.", UDim2.fromOffset(16, 368), UDim2.new(1, -32, 0, 36), Enum.Font.RobotoMono, MUTED, 7)
 end
 
@@ -1462,7 +1621,9 @@ local function renderPlayerPage()
 	sectionTitle(page, t("pagePlayer"), "CONTROLES DE PRUEBA DEL PERSONAJE")
 
 	local function stepper(y, titleText, getValue, setValue, minValue, maxValue, step, suffix)
-		label(page, titleText, UDim2.fromOffset(16, y), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+		label(page, titleText, UDim2.fromOffset(16, y), UDim2.new(1, -196, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+		local helpKey = HELP_KEY_BY_LABEL[titleText]
+		if helpKey then addOptionHelpButton(page, y + 1, helpKey, function() return tostring(getValue()) .. suffix end, -174, 16) end
 		local value = label(page, tostring(getValue()) .. suffix, UDim2.new(1, -147, 0, y), UDim2.fromOffset(68, 18), Enum.Font.RobotoMono, ACCENT, 9)
 		value.TextXAlignment = Enum.TextXAlignment.Center
 		local function makeStepButton(x, text, delta)
@@ -1502,7 +1663,11 @@ end
 local function renderMiscPage()
 	local page = makePage("MISC")
 	sectionTitle(page, t("pageMisc"), "AJUSTES Y ESTADO DEL CLIENTE")
-	label(page, t("language"), UDim2.fromOffset(16, 62), UDim2.new(1, -32, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+	label(page, t("language"), UDim2.fromOffset(16, 62), UDim2.new(1, -60, 0, 18), Enum.Font.GothamMedium, WHITE, 11)
+	addOptionHelpButton(page, 62, "language", function()
+		local languageNames = {ES = "ESPAÑOL", EN = "ENGLISH", PT = "PORTUGUÊS"}
+		return languageNames[state.language] or state.language
+	end, -30, 18)
 	local options = {{"ES", "ESPAÑOL"}, {"EN", "ENGLISH"}, {"PT", "PORTUGUÊS"}}
 	for index, option in ipairs(options) do
 		local languageButton = create("TextButton", {
@@ -1562,7 +1727,11 @@ local function renderMiscPage()
 	label(info, t("made"), UDim2.fromOffset(11, 7), UDim2.new(1, -22, 0, 13), Enum.Font.GothamBold, WHITE, 8)
 	label(info, t("mode"), UDim2.fromOffset(11, 22), UDim2.new(1, -22, 0, 13), Enum.Font.GothamMedium, GREEN, 8)
 	label(info, "DISPOSITIVO: " .. deviceIcon(), UDim2.fromOffset(11, 38), UDim2.new(1, -22, 0, 13), Enum.Font.RobotoMono, MUTED, 8)
-	label(info, "FPS: --   ·   PING: --", UDim2.fromOffset(11, 54), UDim2.new(1, -22, 0, 13), Enum.Font.RobotoMono, ACCENT, 8).Name = "Performance"
+	label(info, "FPS: --   ·   PING: --", UDim2.fromOffset(11, 54), UDim2.new(1, -46, 0, 13), Enum.Font.RobotoMono, ACCENT, 8).Name = "Performance"
+	addOptionHelpButton(info, 52, "performance", function()
+		local performanceLabel = info:FindFirstChild("Performance")
+		return performanceLabel and performanceLabel.Text or "FPS / PING"
+	end, -25, 16)
 	local discord = create("TextButton", {
 		BackgroundColor3 = Color3.fromRGB(88, 101, 242),
 		BorderSizePixel = 0,
@@ -1622,7 +1791,7 @@ local function renderMusicPage()
 		BorderSizePixel = 0,
 		Font = Enum.Font.GothamBold,
 		Position = UDim2.fromOffset(16, 61),
-		Size = UDim2.new(1, -32, 0, 27),
+		Size = UDim2.new(1, -56, 0, 27),
 		Text = "PONER MÚSICA",
 		TextColor3 = WHITE,
 		TextSize = 9,
@@ -1630,6 +1799,10 @@ local function renderMusicPage()
 	}, page)
 	corner(playButton, 8)
 	musicPlayButton = playButton
+	addOptionHelpButton(page, 65, "music", function()
+		if localMusicSound.IsPlaying then return "REPRODUCIENDO · " .. state.currentMusicName end
+		return state.currentMusicName ~= "" and ("DETENIDA · " .. state.currentMusicName) or t("helpNone")
+	end, -36, 18)
 
 	local status = label(page, "ELIGE UNA PISTA · SI NO CARGA, REVISA PERMISOS", UDim2.fromOffset(16, 91), UDim2.new(1, -32, 0, 14), Enum.Font.RobotoMono, MUTED, 7)
 	status.Name = "MusicStatus"
@@ -1665,7 +1838,8 @@ local function renderMusicPage()
 			end
 		end)
 	end
-	local volumeText = label(page, "VOLUMEN: " .. math.floor(state.musicVolume * 100 + 0.5) .. "%", UDim2.fromOffset(16, 106), UDim2.new(1, -32, 0, 14), Enum.Font.GothamMedium, WHITE, 9)
+	local volumeText = label(page, "VOLUMEN: " .. math.floor(state.musicVolume * 100 + 0.5) .. "%", UDim2.fromOffset(16, 106), UDim2.new(1, -60, 0, 14), Enum.Font.GothamMedium, WHITE, 9)
+	addOptionHelpButton(page, 105, "musicVolume", function() return math.floor(state.musicVolume * 100 + 0.5) .. "%" end, -26, 16)
 	local volumeBar = create("Frame", {
 		Active = true,
 		BackgroundColor3 = Color3.fromRGB(56, 70, 92),
@@ -1730,13 +1904,14 @@ local function renderMusicPage()
 		PlaceholderColor3 = MUTED,
 		PlaceholderText = "ID numérico del audio de Roblox",
 		Position = UDim2.fromOffset(16, 139),
-		Size = UDim2.new(1, -32, 0, 24),
+		Size = UDim2.new(1, -56, 0, 24),
 		Text = "",
 		TextColor3 = WHITE,
 		TextSize = 8,
 		ZIndex = 13,
 	}, page)
 	corner(idInput, 7)
+	addOptionHelpButton(page, 142, "musicId", function() return idInput.Text ~= "" and idInput.Text or state.currentMusicId end, -36, 18)
 	local prepareIdButton = create("TextButton", {
 		AutoButtonColor = false,
 		BackgroundColor3 = SURFACE_2,
@@ -1769,7 +1944,8 @@ local function renderMusicPage()
 	end)
 	label(page, "EL ID SE PREPARA AQUÍ; EL BOTÓN SUPERIOR INICIA O DETIENE EL AUDIO.", UDim2.fromOffset(128, 166), UDim2.new(1, -144, 0, 23), Enum.Font.RobotoMono, MUTED, 6)
 
-	local presetTitle = label(page, "LISTA · TOCA UNA PISTA PARA INICIARLA", UDim2.fromOffset(16, 193), UDim2.new(1, -32, 0, 14), Enum.Font.RobotoMono, ACCENT, 7)
+	local presetTitle = label(page, "LISTA · TOCA UNA PISTA PARA INICIARLA", UDim2.fromOffset(16, 193), UDim2.new(1, -60, 0, 14), Enum.Font.RobotoMono, ACCENT, 7)
+	addOptionHelpButton(page, 191, "musicTracks", function() return state.currentMusicName ~= "" and state.currentMusicName or t("helpNone") end, -26, 16)
 	local presetList = create("ScrollingFrame", {
 		Active = true,
 		BackgroundTransparency = 1,
@@ -1934,6 +2110,7 @@ local function renderColorsPage()
 	stroke(preview, ACCENT, 1, 0.08)
 	local hexLabel = label(page, "#46C7FF", UDim2.fromOffset(218, 143), UDim2.fromOffset(104, 18), Enum.Font.RobotoMono, WHITE, 9)
 	hexLabel.TextXAlignment = Enum.TextXAlignment.Center
+	addOptionHelpButton(preview, 3, "colorAccent", function() return hexLabel.Text end, -22, 16)
 	label(page, "APLICA ESTE COLOR AL GUI, A LAS LÍNEAS ESP Y AL FOV.", UDim2.fromOffset(218, 166), UDim2.fromOffset(104, 52), Enum.Font.RobotoMono, MUTED, 7)
 	local resetColor = create("TextButton", {
 		AutoButtonColor = false,
@@ -2107,6 +2284,7 @@ end
 
 local function showPage(pageName)
 	state.page = pageName
+	helpCard.Visible = false
 	for name, frame in pairs(pageFrames) do
 		frame.Visible = name == pageName
 		if name == pageName then frame.CanvasPosition = Vector2.new(0, 0) end
