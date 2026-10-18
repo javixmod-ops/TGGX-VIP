@@ -72,9 +72,7 @@ local accessTier = nil
 local trialExpiresAt = nil
 local trialCountdownLabel = nil
 local TRIAL_KEY = "TGX-TRIAL-1H-2EE5A350D9774CA673C2586B"
-local TRIAL_DURATION_SECONDS = 60 * 60
-local trialUsedThisSession = false
-local trialOriginalWalkSpeed, trialOriginalUseJumpPower, trialOriginalJumpPower, trialOriginalJumpHeight
+local trialOriginalWalkSpeed, trialOriginalUseJumpPower, trialOriginalJumpHeight
 local trialOriginalCameraFov
 
 -- El Sound se crea desde este LocalScript y vive en SoundService solo en este cliente.
@@ -2711,6 +2709,7 @@ local unlockButton = create("TextButton", {
 	ZIndex = 3,
 }, accessCard)
 corner(unlockButton, 8)
+local isSubmittingAccess = false
 create("TextLabel", {
 	BackgroundTransparency = 1,
 	Font = Enum.Font.RobotoMono,
@@ -2731,24 +2730,66 @@ local function submitAccessKey()
 		accessTier = "VIP"
 		trialExpiresAt = nil
 	elseif enteredKey == TRIAL_KEY then
-		if trialUsedThisSession then
+		isSubmittingAccess = true
+		unlockButton.Active = false
+		unlockButton.Text = "VERIFICANDO..."
+		keyStatus.TextColor3 = MUTED
+		keyStatus.Text = "VERIFICANDO LA KEY..."
+		local trialRemote = ReplicatedStorage:WaitForChild("TwinGGXPT_TrialAccess", 8)
+		local remoteReady = trialRemote and trialRemote:IsA("RemoteFunction")
+		local callOk, response = false, nil
+		if remoteReady then
+			callOk, response = pcall(function() return trialRemote:InvokeServer("redeemTrial", enteredKey) end)
+		end
+		isSubmittingAccess = false
+		unlockButton.Active = true
+		unlockButton.Text = "ACTIVAR"
+		if callOk and type(response) == "table" and (response.status == "activated" or response.status == "active") and type(response.expiresAt) == "number" and response.expiresAt > workspace:GetServerTimeNow() then
+			accessTier = "TRIAL"
+			trialExpiresAt = response.expiresAt
+			local humanoid = getLocalHumanoid()
+			if humanoid then
+				trialOriginalWalkSpeed = humanoid.WalkSpeed
+				trialOriginalUseJumpPower = humanoid.UseJumpPower
+				trialOriginalJumpPower = humanoid.JumpPower
+				trialOriginalJumpHeight = humanoid.JumpHeight
+			end
+			local camera = workspace.CurrentCamera
+			trialOriginalCameraFov = camera and camera.FieldOfView or nil
+		elseif callOk and type(response) == "table" and response.status == "used" then
 			keyStatus.TextColor3 = RED
-			keyStatus.Text = "ESTA KEY YA SE USÓ EN ESTA EJECUCIÓN."
+			keyStatus.Text = "ESTA KEY YA FUE USADA Y LA HORA TERMINÓ."
 			keyInput.Text = ""
 			return
+		elseif callOk and type(response) == "table" and response.status == "invalid" then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "LA KEY DEL CLIENTE Y DEL SERVIDOR NO COINCIDEN."
+			return
+		elseif not remoteReady then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "FALTA SCRIPT EN EL SERVICIO DE SERVIDOR."
+			return
+		elseif callOk and type(response) == "table" and response.status == "unconfigured" then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "LA KEY DE PRUEBA NO ESTÁ CONFIGURADA EN EL SERVIDOR."
+			return
+		elseif callOk and type(response) == "table" and response.status == "unavailable" then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "ALMACENAMIENTO PERSISTENTE NO DISPONIBLE."
+			return
+		elseif callOk and type(response) == "table" and response.status == "cooldown" then
+			keyStatus.TextColor3 = MUTED
+			keyStatus.Text = "ESPERA 2 SEGUNDOS Y VUELVE A INTENTAR."
+			return
+		elseif not callOk then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "EL SERVIDOR NO RESPONDIÓ. REVISA SU SCRIPT."
+			return
+		else
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "RESPUESTA INESPERADA DEL SERVIDOR."
+			return
 		end
-		trialUsedThisSession = true
-		accessTier = "TRIAL"
-		trialExpiresAt = workspace:GetServerTimeNow() + TRIAL_DURATION_SECONDS
-		local humanoid = getLocalHumanoid()
-		if humanoid then
-			trialOriginalWalkSpeed = humanoid.WalkSpeed
-			trialOriginalUseJumpPower = humanoid.UseJumpPower
-			trialOriginalJumpPower = humanoid.JumpPower
-			trialOriginalJumpHeight = humanoid.JumpHeight
-		end
-		local camera = workspace.CurrentCamera
-		trialOriginalCameraFov = camera and camera.FieldOfView or nil
 	else
 		keyStatus.TextColor3 = RED
 		keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."

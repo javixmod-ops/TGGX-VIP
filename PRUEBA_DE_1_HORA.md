@@ -1,7 +1,16 @@
-# Key de prueba de una hora (solo LocalScript)
+# Key de prueba de una hora
 
-La key `TGX-TRIAL-1H-2EE5A350D9774CA673C2586B` está dentro de `TwinGGXPT.lua`. Al introducirla, el contador empieza localmente y el menú se cierra al completar una hora.
+El LocalScript compara la key de prueba antes de abrir el menú. Si coincide, solicita la confirmación al servidor; el servidor vuelve a validarla y guarda el canje por `UserId` en el DataStore `TwinGGXPT_TrialRedemptions_v1`.
 
-Esta modalidad no requiere un Script en `ServerScriptService`, pero una lógica que corre solo en el cliente no puede guardar de forma fiable el canje por `UserId` entre salidas y reingresos. El bloqueo solo vive durante la ejecución actual del LocalScript: al reiniciar el script o volver a entrar, la key podrá activarse otra vez. Además, como la key está en el archivo público, cualquiera puede leerla. No se debe tratar como protección contra manipulación del cliente.
+La primera activación inicia una hora. Si el mismo usuario vuelve a entrar mientras sigue activa, la key recupera el vencimiento original y muestra solo el tiempo restante; no reinicia ni extiende la prueba. Cuando vence, ese `UserId` ya no puede volver a canjearla. Los registros sobreviven a la salida del jugador y al reinicio del servidor mientras el runtime conserve su almacenamiento persistente.
 
-Mantén `TwinGGXPT.lua` como LocalScript en la ubicación equivalente a `StarterPlayer > StarterPlayerScripts` de tu entorno compatible. Las keys permanentes Free y VIP siguen disponibles y no tienen vencimiento.
+## Instalación en el runtime compatible
+
+1. Mantén `TwinGGXPT.lua` como LocalScript en la ubicación de scripts de cliente equivalente a `StarterPlayer > StarterPlayerScripts`.
+2. Coloca `ServerScriptService/TwinGGXPT_TrialAccess.server.lua` como Script en el servicio de scripts de servidor equivalente a `ServerScriptService`.
+3. El servidor crea `TwinGGXPT_TrialAccess` en `ReplicatedStorage`. La key del LocalScript y la del Script de servidor deben coincidir exactamente.
+4. Habilita el servicio persistente de datos del runtime y comprueba su salida de servidor. Los errores de DataStore aparecen con el prefijo `[TwinGGXPT Trial]`.
+
+Un LocalScript solo no puede hacer cumplir un uso por `UserId` entre reingresos: el cliente se puede reiniciar o modificar. Si el runtime no ofrece Scripts de servidor, RemoteFunctions y almacenamiento persistente compatible, no se puede garantizar ese límite con código local. La key está en el repositorio público, así que cualquiera puede verla y canjearla una vez por su propio `UserId`.
+
+Las keys permanentes Free y VIP siguen disponibles y no tienen vencimiento.
