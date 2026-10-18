@@ -71,6 +71,9 @@ local state = {
 local accessTier = nil
 local trialExpiresAt = nil
 local trialCountdownLabel = nil
+local TRIAL_KEY = "TGX-TRIAL-1H-2EE5A350D9774CA673C2586B"
+local TRIAL_DURATION_SECONDS = 60 * 60
+local trialUsedThisSession = false
 local trialOriginalWalkSpeed, trialOriginalUseJumpPower, trialOriginalJumpPower, trialOriginalJumpHeight
 local trialOriginalCameraFov
 
@@ -2708,7 +2711,6 @@ local unlockButton = create("TextButton", {
 	ZIndex = 3,
 }, accessCard)
 corner(unlockButton, 8)
-local isSubmittingAccess = false
 create("TextLabel", {
 	BackgroundTransparency = 1,
 	Font = Enum.Font.RobotoMono,
@@ -2716,12 +2718,11 @@ create("TextLabel", {
 	Size = UDim2.new(1, -36, 0, 30),
 	Text = "FREE: AIMBOT + EPS · VIP: MENÚ COMPLETO · TRIAL: 1 HORA",
 	TextColor3 = MUTED,
-		TextSize = 8,
-		TextWrapped = true,
-		ZIndex = 3,
-	}, accessCard)
+	TextSize = 8,
+	TextWrapped = true,
+	ZIndex = 3,
+}, accessCard)
 local function submitAccessKey()
-	if isSubmittingAccess then return end
 	local enteredKey = keyInput.Text:match("^%s*(.-)%s*$")
 	if enteredKey == "Free-Aimbot-JxVI-MOD-TGX" then
 		accessTier = "FREE"
@@ -2729,68 +2730,30 @@ local function submitAccessKey()
 	elseif enteredKey == "VIP-AIMBOT-FF-JXVI-MOD-SZ10" then
 		accessTier = "VIP"
 		trialExpiresAt = nil
+	elseif enteredKey == TRIAL_KEY then
+		if trialUsedThisSession then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "ESTA KEY YA SE USÓ EN ESTA EJECUCIÓN."
+			keyInput.Text = ""
+			return
+		end
+		trialUsedThisSession = true
+		accessTier = "TRIAL"
+		trialExpiresAt = workspace:GetServerTimeNow() + TRIAL_DURATION_SECONDS
+		local humanoid = getLocalHumanoid()
+		if humanoid then
+			trialOriginalWalkSpeed = humanoid.WalkSpeed
+			trialOriginalUseJumpPower = humanoid.UseJumpPower
+			trialOriginalJumpPower = humanoid.JumpPower
+			trialOriginalJumpHeight = humanoid.JumpHeight
+		end
+		local camera = workspace.CurrentCamera
+		trialOriginalCameraFov = camera and camera.FieldOfView or nil
 	else
-		isSubmittingAccess = true
-		unlockButton.Active = false
-		unlockButton.Text = "VERIFICANDO..."
-		keyStatus.TextColor3 = MUTED
-		keyStatus.Text = "VERIFICANDO LA KEY DE PRUEBA..."
-		local trialRemote = ReplicatedStorage:WaitForChild("TwinGGXPT_TrialAccess", 8)
-		local remoteReady = trialRemote and trialRemote:IsA("RemoteFunction")
-		local callOk, response = false, nil
-		if remoteReady then
-			callOk, response = pcall(function() return trialRemote:InvokeServer("redeemTrial", enteredKey) end)
-		end
-		isSubmittingAccess = false
-		unlockButton.Active = true
-		unlockButton.Text = "ACTIVAR"
-		if callOk and type(response) == "table" and (response.status == "activated" or response.status == "active") and type(response.expiresAt) == "number" and response.expiresAt > workspace:GetServerTimeNow() then
-			accessTier = "TRIAL"
-			trialExpiresAt = response.expiresAt
-			local humanoid = getLocalHumanoid()
-			if humanoid then
-				trialOriginalWalkSpeed = humanoid.WalkSpeed
-				trialOriginalUseJumpPower = humanoid.UseJumpPower
-				trialOriginalJumpPower = humanoid.JumpPower
-				trialOriginalJumpHeight = humanoid.JumpHeight
-			end
-			local camera = workspace.CurrentCamera
-			trialOriginalCameraFov = camera and camera.FieldOfView or nil
-		elseif callOk and type(response) == "table" and response.status == "used" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "ESTA KEY YA FUE CANJEADA Y SU HORA TERMINÓ."
-			keyInput.Text = ""
-			return
-		elseif callOk and type(response) == "table" and response.status == "invalid" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."
-			keyInput.Text = ""
-			return
-		elseif not remoteReady then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "FALTA SCRIPT EN ServerScriptService."
-			return
-		elseif callOk and type(response) == "table" and response.status == "unconfigured" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "FALTA ServerStorage > TwinGGXPT_TrialKey."
-			return
-		elseif callOk and type(response) == "table" and response.status == "unavailable" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "DATASTORE OFF: PUBLICA Y HABILITA API SERVICES."
-			return
-		elseif callOk and type(response) == "table" and response.status == "cooldown" then
-			keyStatus.TextColor3 = MUTED
-			keyStatus.Text = "ESPERA 2 SEGUNDOS Y VUELVE A INTENTAR."
-			return
-		elseif not callOk then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "SIN RESPUESTA DEL SERVIDOR: REVISA SU SCRIPT."
-			return
-		else
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "RESPUESTA INESPERADA: REVISA OUTPUT DEL SERVER."
-			return
-		end
+		keyStatus.TextColor3 = RED
+		keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."
+		keyInput.Text = ""
+		return
 	end
 	isHitboxActive = (accessTier == "VIP" or accessTier == "TRIAL") and state.hitboxEnabled
 	if trialCountdownLabel then trialCountdownLabel.Visible = accessTier == "TRIAL" end
