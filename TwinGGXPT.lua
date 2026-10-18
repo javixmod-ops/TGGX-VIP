@@ -53,6 +53,7 @@ local state = {
 	epsHealth = false,
 	epsDistance = false,
 	epsNearestLine = false,
+	epsTeammates = false,
 	selectedTarget = nil,
 	accentColor = DEFAULT_ACCENT,
 	hitboxEnabled = true,
@@ -104,6 +105,7 @@ local translations = {
 		aimAssist = "AIMBOT ÚNICO", notifications = "NOTIFI UI", smoothAim = "SEGUIMIENTO SUAVE",
 		line = "LÍNEAS EPS", box = "CUADRADO EPS", skeleton = "EPS ESQUELETO",
 		nearestLine = "LÍNEA CUERPO A CUERPO",
+		teammateIndicator = "INDICADOR DE COMPAÑERO", teammateTag = "COMPAÑERO",
 		health = "EPS VIDA", distance = "EPS METROS", counter = "CONTADOR DE JUGADORES",
 		visible = "FOV VISIBLE", radius = "RADIO DEL FOV", cameraFov = "FOV CÁMARA", language = "IDIOMA",
 		fovShape = "FORMA DEL FOV", shapeCircle = "CÍRCULO", shapeSquare = "CUADRADO", shapeTriangle = "TRIÁNGULO", shapeDiamond = "ROMBO", shapePentagon = "PENTÁGONO", shapeHexagon = "HEXÁGONO",
@@ -122,6 +124,7 @@ local translations = {
 		aimAssist = "SINGLE AIM ASSIST", notifications = "UI NOTIFICATIONS", smoothAim = "SMOOTH AIM",
 		line = "ESP LINES", box = "ESP BOX", skeleton = "ESP SKELETON",
 		nearestLine = "LINE TO NEAREST TARGET",
+		teammateIndicator = "TEAMMATE INDICATOR", teammateTag = "TEAMMATE",
 		health = "ESP HEALTH", distance = "ESP DISTANCE", counter = "PLAYER COUNTER",
 		visible = "SHOW FOV", radius = "FOV RADIUS", cameraFov = "CAMERA FOV", language = "LANGUAGE",
 		fovShape = "FOV SHAPE", shapeCircle = "CIRCLE", shapeSquare = "SQUARE", shapeTriangle = "TRIANGLE", shapeDiamond = "DIAMOND", shapePentagon = "PENTAGON", shapeHexagon = "HEXAGON",
@@ -140,6 +143,7 @@ local translations = {
 		aimAssist = "MIRA ASSISTIDA ÚNICA", notifications = "NOTIFICAÇÕES UI", smoothAim = "RASTREAMENTO SUAVE",
 		line = "LINHAS ESP", box = "QUADRO ESP", skeleton = "ESQUELETO ESP",
 		nearestLine = "LINHA AO ALVO MAIS PRÓXIMO",
+		teammateIndicator = "INDICADOR DE COMPANHEIROS", teammateTag = "COMPANHEIRO",
 		health = "VIDA ESP", distance = "DISTÂNCIA ESP", counter = "CONTADOR DE JOGADORES",
 		visible = "FOV VISÍVEL", radius = "RAIO DO FOV", cameraFov = "FOV DA CÂMERA", language = "IDIOMA",
 		fovShape = "FORMA DO FOV", shapeCircle = "CÍRCULO", shapeSquare = "QUADRADO", shapeTriangle = "TRIÂNGULO", shapeDiamond = "LOSANGO", shapePentagon = "PENTÁGONO", shapeHexagon = "HEXÁGONO",
@@ -171,6 +175,7 @@ local OPTION_HELP = {
 	distance = "Muestra la distancia entre tu personaje y cada objetivo.",
 	counter = "Muestra u oculta el contador HUD de jugadores.",
 	nearestLine = "Traza una línea desde tu personaje al jugador o bot más cercano.",
+	teammateIndicator = "Marca en verde a los compañeros de tu mismo equipo que estén vivos y a la vista.",
 	visible = "Muestra u oculta el área FOV; por sí sola no cambia el alcance.",
 	fovShape = "Elige la forma usada para visualizar y filtrar el área FOV.",
 	radius = "Radio del área FOV expresado en píxeles.",
@@ -1157,6 +1162,19 @@ local function isValidTarget(targetPlayer)
 	return getPlayerParts(targetPlayer) ~= nil
 end
 
+local function isTeammate(targetPlayer)
+	if not targetPlayer or targetPlayer == player then return false end
+	local ok, sameTeam = pcall(function()
+		local ownTeam, targetTeam = player.Team, targetPlayer.Team
+		if ownTeam ~= nil or targetTeam ~= nil then
+			return ownTeam ~= nil and ownTeam == targetTeam
+		end
+		if player.Neutral or targetPlayer.Neutral then return false end
+		return player.TeamColor ~= nil and targetPlayer.TeamColor ~= nil and player.TeamColor == targetPlayer.TeamColor
+	end)
+	return ok and sameTeam == true
+end
+
 local function detectDevice()
 	if UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled then return "CONSOLE" end
 	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then return "MOBILE" end
@@ -1474,7 +1492,8 @@ local function renderEpsPage()
 		state.epsNearestLine = value
 		if value then ensureNpcCatalog() end
 	end)
-	label(page, "TRAZA DESDE TU CUERPO AL JUGADOR/BOT MÁS CERCANO.", UDim2.fromOffset(16, 297), UDim2.new(1, -32, 0, 20), Enum.Font.RobotoMono, MUTED, 7)
+	toggle(page, 297, t("teammateIndicator"), function() return state.epsTeammates end, function(value) state.epsTeammates = value end)
+	label(page, "TRAZA DESDE TU CUERPO AL JUGADOR/BOT MÁS CERCANO.", UDim2.fromOffset(16, 330), UDim2.new(1, -32, 0, 20), Enum.Font.RobotoMono, MUTED, 7)
 end
 
 local function setFovRadius(radius)
@@ -2224,6 +2243,7 @@ resetSection = function(pageName, refreshAfter)
 		state.epsHealth = false
 		state.epsDistance = false
 		state.epsNearestLine = false
+		state.epsTeammates = false
 		hud.Visible = true
 	elseif pageName == "FOV" then
 		state.showFov = true
@@ -2531,7 +2551,7 @@ local function visualFor(targetPlayer)
 	highlight.Parent = worldVisuals
 	local tag = create("BillboardGui", {
 		Name = "TGX_Tag_" .. targetPlayer.UserId,
-		AlwaysOnTop = true,
+		AlwaysOnTop = false,
 		Enabled = false,
 		LightInfluence = 0,
 		MaxDistance = 10000,
@@ -2551,7 +2571,8 @@ local function visualFor(targetPlayer)
 		ZIndex = 44,
 	}, tag)
 	corner(tagText, 6)
-	stroke(tagText, ACCENT, 1, 0.2)
+	tagText.TextColor3 = GREEN
+	stroke(tagText, GREEN, 1, 0.2)
 	local healthBarGui = create("BillboardGui", {
 		Name = "TGX_Health_" .. targetPlayer.UserId,
 		AlwaysOnTop = true,
@@ -2751,7 +2772,13 @@ local function updateFrame(deltaTime)
 			updateLocalHitboxBox(targetPlayer, rootPart, visible and state.hitboxVisible)
 			visual.highlight.Adornee = character
 			visual.highlight.Enabled = visible and state.epsBoxes
+			visual.tag.Adornee = head
 			visual.tag.Enabled = false
+			if state.epsTeammates and character and head and isTeammate(targetPlayer) then
+				local teammateScreen, teammateOnScreen = camera:WorldToViewportPoint(head.Position)
+				visual.tagText.Text = t("teammateTag") .. " · " .. targetPlayer.DisplayName
+				visual.tag.Enabled = teammateOnScreen and teammateScreen.Z > 0
+			end
 			visual.healthBarGui.Adornee = rootPart
 			visual.healthBarGui.Enabled = visible and state.epsHealth
 			if visual.healthBarGui.Enabled then
