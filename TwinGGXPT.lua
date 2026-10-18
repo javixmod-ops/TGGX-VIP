@@ -2716,10 +2716,10 @@ create("TextLabel", {
 	Size = UDim2.new(1, -36, 0, 30),
 	Text = "FREE: AIMBOT + EPS · VIP: MENÚ COMPLETO · TRIAL: 1 HORA",
 	TextColor3 = MUTED,
-	TextSize = 8,
-	TextWrapped = true,
-	ZIndex = 3,
-}, accessCard)
+		TextSize = 8,
+		TextWrapped = true,
+		ZIndex = 3,
+	}, accessCard)
 local function submitAccessKey()
 	if isSubmittingAccess then return end
 	local enteredKey = keyInput.Text:match("^%s*(.-)%s*$")
@@ -2736,8 +2736,9 @@ local function submitAccessKey()
 		keyStatus.TextColor3 = MUTED
 		keyStatus.Text = "VERIFICANDO LA KEY DE PRUEBA..."
 		local trialRemote = ReplicatedStorage:WaitForChild("TwinGGXPT_TrialAccess", 8)
+		local remoteReady = trialRemote and trialRemote:IsA("RemoteFunction")
 		local callOk, response = false, nil
-		if trialRemote and trialRemote:IsA("RemoteFunction") then
+		if remoteReady then
 			callOk, response = pcall(function() return trialRemote:InvokeServer("redeemTrial", enteredKey) end)
 		end
 		isSubmittingAccess = false
@@ -2765,9 +2766,29 @@ local function submitAccessKey()
 			keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."
 			keyInput.Text = ""
 			return
+		elseif not remoteReady then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "FALTA SCRIPT EN ServerScriptService."
+			return
+		elseif callOk and type(response) == "table" and response.status == "unconfigured" then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "FALTA ServerStorage > TwinGGXPT_TrialKey."
+			return
+		elseif callOk and type(response) == "table" and response.status == "unavailable" then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "DATASTORE OFF: PUBLICA Y HABILITA API SERVICES."
+			return
+		elseif callOk and type(response) == "table" and response.status == "cooldown" then
+			keyStatus.TextColor3 = MUTED
+			keyStatus.Text = "ESPERA 2 SEGUNDOS Y VUELVE A INTENTAR."
+			return
+		elseif not callOk then
+			keyStatus.TextColor3 = RED
+			keyStatus.Text = "SIN RESPUESTA DEL SERVIDOR: REVISA SU SCRIPT."
+			return
 		else
 			keyStatus.TextColor3 = RED
-			keyStatus.Text = "NO SE PUDO VERIFICAR. REVISA EL SERVIDOR Y DATASTORE."
+			keyStatus.Text = "RESPUESTA INESPERADA: REVISA OUTPUT DEL SERVER."
 			return
 		end
 	end

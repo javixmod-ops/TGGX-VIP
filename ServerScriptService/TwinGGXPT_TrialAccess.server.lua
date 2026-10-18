@@ -47,7 +47,10 @@ remote.OnServerInvoke = function(player, action, suppliedKey)
 	local readOk, saved = pcall(function()
 		return STORE:GetAsync(datastoreKey)
 	end)
-	if not readOk then return {status = "unavailable"} end
+	if not readOk then
+		warn("[TwinGGXPT Trial] DataStore GetAsync falló para UserId " .. tostring(userId) .. ": " .. tostring(saved))
+		return {status = "unavailable"}
+	end
 	if type(saved) == "table" then
 		local expiresAt = tonumber(saved.expiresAt)
 		if expiresAt and now < expiresAt then
@@ -66,7 +69,10 @@ remote.OnServerInvoke = function(player, action, suppliedKey)
 			return newRedemption
 		end)
 	end)
-	if not writeOk or type(result) ~= "table" then return {status = "unavailable"} end
+	if not writeOk or type(result) ~= "table" then
+		warn("[TwinGGXPT Trial] DataStore UpdateAsync falló para UserId " .. tostring(userId) .. ": " .. tostring(result))
+		return {status = "unavailable"}
+	end
 
 	local expiresAt = tonumber(result.expiresAt)
 	if not expiresAt then return {status = "unavailable"} end
