@@ -109,6 +109,7 @@ local translations = {
 		fovShape = "FORMA DEL FOV", shapeCircle = "CÍRCULO", shapeSquare = "CUADRADO", shapeTriangle = "TRIÁNGULO", shapeDiamond = "ROMBO", shapePentagon = "PENTÁGONO", shapeHexagon = "HEXÁGONO",
 		fovShapeHint = "EL ÁREA DE AIMBOT USA LA FIGURA ELEGIDA.", fovTargetHint = "SOLO ADQUIERE OBJETIVOS DENTRO DE LA FORMA Y CON LÍNEA DE VISIÓN.",
 		made = "HECHO POR EL DESARROLLADOR: JXVI", mode = "GUI MOD: ACTIVADO ✅",
+		resetSection = "RESET SECCIÓN", resetAll = "RESTABLECER TODO",
 		noTarget = "SIN OBJETIVO", target = "OBJETIVO", aimLocked = "BLOQUEO A UN OBJETIVO", aimLostWall = "SE DEJÓ DE SEGUIR: DETRÁS DE UNA PARED", aimHint = "OBJETIVO MÁS CERCANO · DENTRO DEL FOV · SIN PAREDES",
 		hitbox = "HITBOX EXPANDER", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMAÑO PROPIO", showOwnHitbox = "VER MI HITBOX", hitboxSize = "TAMAÑO DE HITBOX",
 		speed = "VELOCIDAD", resetSpeed = "RESET VELOCIDAD", superJump = "SUPER SALTO", resetJump = "RESET SUPER SALTO", noclip = "NOCLIP", antiLag = "ANTI LAG",
@@ -124,6 +125,7 @@ local translations = {
 		fovShape = "FOV SHAPE", shapeCircle = "CIRCLE", shapeSquare = "SQUARE", shapeTriangle = "TRIANGLE", shapeDiamond = "DIAMOND", shapePentagon = "PENTAGON", shapeHexagon = "HEXAGON",
 		fovShapeHint = "AIM AREA FOLLOWS THE SELECTED SHAPE.", fovTargetHint = "ONLY ACQUIRES TARGETS INSIDE THE SHAPE WITH LINE OF SIGHT.",
 		made = "MADE BY THE DEVELOPER: JXVI", mode = "GUI MODE: ENABLED ✅",
+		resetSection = "RESET SECTION", resetAll = "RESET ALL",
 		noTarget = "NO TARGET", target = "TARGET", aimLocked = "LOCKED ON TARGET", aimLostWall = "STOPPED: TARGET BEHIND WALL", aimHint = "NEAREST TARGET · INSIDE FOV · NO WALLS",
 		hitbox = "HITBOX EXPANDER", showHitbox = "SHOW HITBOX", smallOwnHitbox = "TINY SELF HITBOX", ownHitboxSize = "OWN HITBOX SIZE", showOwnHitbox = "SHOW MY HITBOX", hitboxSize = "HITBOX SIZE",
 		speed = "SPEED", resetSpeed = "RESET SPEED", superJump = "SUPER JUMP", resetJump = "RESET JUMP", noclip = "NOCLIP", antiLag = "LOW GRAPHICS",
@@ -139,6 +141,7 @@ local translations = {
 		fovShape = "FORMA DO FOV", shapeCircle = "CÍRCULO", shapeSquare = "QUADRADO", shapeTriangle = "TRIÂNGULO", shapeDiamond = "LOSANGO", shapePentagon = "PENTÁGONO", shapeHexagon = "HEXÁGONO",
 		fovShapeHint = "A ÁREA DE MIRA SEGUE A FORMA ESCOLHIDA.", fovTargetHint = "SÓ ADQUIRE ALVOS DENTRO DA FORMA E COM LINHA DE VISÃO.",
 		made = "FEITO PELO DESENVOLVEDOR: JXVI", mode = "MODO GUI: ATIVADO ✅",
+		resetSection = "RESETAR SEÇÃO", resetAll = "RESETAR TUDO",
 		noTarget = "SEM ALVO", target = "ALVO", aimLocked = "ALVO BLOQUEADO", aimLostWall = "PAROU: ALVO ATRÁS DE UMA PAREDE", aimHint = "ALVO VISÍVEL MAIS PRÓXIMO DENTRO DO FOV",
 		hitbox = "EXPANSOR DE HITBOX", showHitbox = "MOSTRAR HITBOX", smallOwnHitbox = "HITBOX MÍNIMA", ownHitboxSize = "TAMANHO PRÓPRIO", showOwnHitbox = "VER MINHA HITBOX", hitboxSize = "TAMANHO DA HITBOX",
 		speed = "VELOCIDADE", resetSpeed = "RESET VELOCIDADE", superJump = "SUPER PULO", resetJump = "RESET PULO", noclip = "NOCLIP", antiLag = "ANTI LAG",
@@ -870,6 +873,8 @@ corner(minimizedIcon, 12)
 local navButtons = {}
 local pageFrames = {}
 local refreshPage
+local resetSection
+local resetAllSettings
 
 local function cleanContent()
 	for _, child in ipairs(content:GetChildren()) do child:Destroy() end
@@ -924,7 +929,23 @@ end
 
 local function sectionTitle(parent, titleText, subtitle)
 	label(parent, subtitle, UDim2.fromOffset(16, 13), UDim2.new(1, -32, 0, 14), Enum.Font.RobotoMono, ACCENT, 8)
-	label(parent, titleText, UDim2.fromOffset(16, 29), UDim2.new(1, -32, 0, 28), Enum.Font.GothamBold, WHITE, 18)
+	label(parent, titleText, UDim2.fromOffset(16, 29), UDim2.new(1, -102, 0, 28), Enum.Font.GothamBold, WHITE, 18)
+	local resetButton = create("TextButton", {
+		AutoButtonColor = false,
+		BackgroundColor3 = SURFACE_2,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Position = UDim2.new(1, -78, 0, 31),
+		Size = UDim2.fromOffset(68, 22),
+		Text = t("resetSection"),
+		TextColor3 = WHITE,
+		TextSize = 7,
+		ZIndex = 13,
+	}, parent)
+	corner(resetButton, 7)
+	resetButton.Activated:Connect(function()
+		if resetSection then resetSection(parent.Name) end
+	end)
 end
 
 local function updatePageCanvas(page)
@@ -958,6 +979,7 @@ local function makePage(name)
 		Visible = false,
 		ZIndex = 12,
 	}, content)
+	page.Name = name
 	page.ElasticBehavior = Enum.ElasticBehavior.Never
 	page:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() updatePageCanvas(page) end)
 	pageFrames[name] = page
@@ -1556,6 +1578,22 @@ local function renderMiscPage()
 	discord.Activated:Connect(function()
 		discord.Text = "DISCORD: hqcNXBbet"
 	end)
+	local resetAllButton = create("TextButton", {
+		AutoButtonColor = false,
+		BackgroundColor3 = SURFACE_2,
+		BorderSizePixel = 0,
+		Font = Enum.Font.GothamBold,
+		Position = UDim2.fromOffset(16, 264),
+		Size = UDim2.new(1, -32, 0, 25),
+		Text = t("resetAll"),
+		TextColor3 = RED,
+		TextSize = 8,
+		ZIndex = 13,
+	}, page)
+	corner(resetAllButton, 7)
+	resetAllButton.Activated:Connect(function()
+		if resetAllSettings then resetAllSettings() end
+	end)
 end
 
 -- IDs de audio del Creator Store mostrados gratuitos/publicados por el API oficial
@@ -1985,14 +2023,87 @@ local function renderColorsPage()
 		endedConnection:Disconnect()
 		if colorPickerRoot == wheelRoot then colorPickerRoot = nil end
 	end)
-		resetColor.Activated:Connect(function()
-			hue, saturation, value = DEFAULT_ACCENT:ToHSV()
+	resetColor.Activated:Connect(function()
+		hue, saturation, value = DEFAULT_ACCENT:ToHSV()
 		lastPaletteHue = hue
 		updatePaletteHue()
 		refreshSelection(true, true)
 	end)
-		refreshSelection(false, false)
+	refreshSelection(false, false)
+end
+
+resetSection = function(pageName, refreshAfter)
+	if pageName == "AIMBOT" then
+		state.aimEnabled = false
+		state.aimNotifications = true
+		state.smoothAim = true
+		state.selectedTarget = nil
+		nextAimAcquireAt = 0
+		if aimToast then aimToast.Visible = false end
+	elseif pageName == "EPS" then
+		state.epsLines = false
+		state.epsBoxes = false
+		state.epsSkeleton = false
+		state.epsHealth = false
+		state.epsDistance = false
+		state.epsNearestLine = false
+		hud.Visible = true
+	elseif pageName == "FOV" then
+		state.showFov = true
+		state.fovRadius = 175
+		state.fovShape = "Circle"
+		state.cameraFov = 70
+		state.cameraFovSet = false
+		local camera = workspace.CurrentCamera
+		if camera then camera.FieldOfView = state.cameraFov end
+		updateFovDisplay()
+	elseif pageName == "HITBOX" then
+		state.hitboxEnabled = true
+		state.hitboxVisible = true
+		state.smallOwnHitbox = false
+		state.smallOwnHitboxSize = MIN_OWN_HITBOX_SIZE
+		state.showOwnHitbox = false
+		state.hitboxSize = CONFIG.HitboxDefaultSize
+		state.hitboxServerConfirmed = false
+		isHitboxActive = true
+		hitboxSize = state.hitboxSize
+		showVisualBox = true
+		updateLocalOwnHitbox(false)
+		if restoreLocalHitboxExpander then restoreLocalHitboxExpander() end
+		if updateOwnHitboxVisual then updateOwnHitboxVisual() end
+		setHitboxStatus("HITBOX EXPANDER ACTIVADA", GREEN)
+	elseif pageName == "PLAYER" then
+		state.playerSpeed = 16
+		state.playerJump = 50
+		state.noclip = false
+		state.antiLag = false
+		restoreNoclip()
+		setAntiLag(false)
+		applyPlayerMovement()
+	elseif pageName == "MISC" then
+		state.language = "ES"
+	elseif pageName == "MUSIC" then
+		state.musicVolume = 0.5
+		state.currentMusicId = ""
+		state.currentMusicName = ""
+		localMusicSound:Stop()
+		localMusicSound.SoundId = ""
+		localMusicSound.Volume = state.musicVolume
+		updateMusicPlayButton()
+	elseif pageName == "COLORS" then
+		applyAccentColor(DEFAULT_ACCENT)
 	end
+	if refreshAfter ~= false and refreshPage then refreshPage() end
+end
+
+resetAllSettings = function()
+	local currentPage = state.page
+	for _, pageName in ipairs({"AIMBOT", "EPS", "FOV", "HITBOX", "PLAYER", "MISC", "MUSIC", "COLORS"}) do
+		resetSection(pageName, false)
+	end
+	state.page = currentPage
+	if refreshPage then refreshPage() end
+end
 
 local function showPage(pageName)
 	state.page = pageName
