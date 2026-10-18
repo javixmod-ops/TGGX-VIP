@@ -16,6 +16,8 @@ local SoundService = game:GetService("SoundService")
 local player = Players.LocalPlayer
 local LocalPlayer = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local oldKeyScreen = playerGui:FindFirstChild("TwinGGXPT_KeyAccess")
+if oldKeyScreen then oldKeyScreen:Destroy() end
 local DEFAULT_ACCENT = Color3.fromRGB(70, 199, 255)
 
 local CONFIG = {
@@ -68,12 +70,6 @@ local state = {
 	currentMusicId = "",
 	currentMusicName = "",
 }
-local accessTier = nil
-local trialExpiresAt = nil
-local trialCountdownLabel = nil
-local TRIAL_KEY = "TGX-TRIAL-1H-2EE5A350D9774CA673C2586B"
-local trialOriginalWalkSpeed, trialOriginalUseJumpPower, trialOriginalJumpHeight
-local trialOriginalCameraFov
 
 -- El Sound se crea desde este LocalScript y vive en SoundService solo en este cliente.
 local previousMusic = SoundService:FindFirstChild("TwinGGXPT_LocalMusic")
@@ -498,38 +494,11 @@ end
 
 gui = create("ScreenGui", {
 	Name = "TwinGGXPT",
-	Enabled = false,
+	Enabled = true,
 	IgnoreGuiInset = true,
 	ResetOnSpawn = false,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
-
-local vipNoticeToken = 0
-local vipNotice = create("TextLabel", {
-	AnchorPoint = Vector2.new(0.5, 0),
-	BackgroundColor3 = SURFACE_2,
-	BorderSizePixel = 0,
-	Font = Enum.Font.GothamBold,
-	Position = UDim2.new(0.5, 0, 0, 14),
-	Size = UDim2.fromOffset(370, 48),
-	Text = "",
-	TextColor3 = WHITE,
-	TextSize = 12,
-	TextWrapped = true,
-	Visible = false,
-	ZIndex = 250,
-}, gui)
-corner(vipNotice, 10)
-stroke(vipNotice, ACCENT, 1.2, 0.2)
-local function showVipMessage()
-	vipNoticeToken += 1
-	local token = vipNoticeToken
-	vipNotice.Text = "Conpra la versión VIP con JxVI mod para utilizar esta opciones"
-	vipNotice.Visible = true
-	task.delay(3, function()
-		if token == vipNoticeToken and vipNotice.Parent then vipNotice.Visible = false end
-	end)
-end
 
 -- Círculo FOV. Solo es una ayuda visual: no altera los impactos del arma.
 local fovCircle = create("Frame", {
@@ -1587,8 +1556,6 @@ local function renderMiscPage()
 	discord.Activated:Connect(function()
 		discord.Text = "DISCORD: hqcNXBbet"
 	end)
-	trialCountdownLabel = label(page, "TIEMPO RESTANTE: --:--", UDim2.fromOffset(16, 264), UDim2.new(1, -32, 0, 22), Enum.Font.GothamBold, ACCENT, 10)
-	trialCountdownLabel.Visible = accessTier == "TRIAL"
 end
 
 -- IDs de audio del Creator Store mostrados gratuitos/publicados por el API oficial
@@ -2018,20 +1985,16 @@ local function renderColorsPage()
 		endedConnection:Disconnect()
 		if colorPickerRoot == wheelRoot then colorPickerRoot = nil end
 	end)
-	resetColor.Activated:Connect(function()
-		hue, saturation, value = DEFAULT_ACCENT:ToHSV()
+		resetColor.Activated:Connect(function()
+			hue, saturation, value = DEFAULT_ACCENT:ToHSV()
 		lastPaletteHue = hue
 		updatePaletteHue()
 		refreshSelection(true, true)
 	end)
-	refreshSelection(false, false)
-end
+		refreshSelection(false, false)
+	end
 
 local function showPage(pageName)
-	if accessTier == "FREE" and pageName ~= "AIMBOT" and pageName ~= "EPS" then
-		showVipMessage()
-		return
-	end
 	state.page = pageName
 	for name, frame in pairs(pageFrames) do
 		frame.Visible = name == pageName
@@ -2623,193 +2586,7 @@ end)
 refreshPage()
 
 
--- Pantalla de acceso independiente; el menú permanece oculto hasta validar la clave.
-local accessGui = create("ScreenGui", {
-	Name = "TwinGGXPT_KeyAccess",
-	DisplayOrder = 1000,
-	IgnoreGuiInset = true,
-	ResetOnSpawn = false,
-	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, playerGui)
-local accessBackdrop = create("Frame", {
-	Active = true,
-	BackgroundColor3 = Color3.fromRGB(4, 8, 14),
-	BackgroundTransparency = 0.12,
-	BorderSizePixel = 0,
-	Size = UDim2.fromScale(1, 1),
-	ZIndex = 1,
-}, accessGui)
-local accessCard = create("Frame", {
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	BackgroundColor3 = SURFACE,
-	BorderSizePixel = 0,
-	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(340, 240),
-	ZIndex = 2,
-}, accessBackdrop)
-corner(accessCard, 14)
-stroke(accessCard, ACCENT, 1.4, 0.15)
-create("TextLabel", {
-	BackgroundTransparency = 1,
-	Font = Enum.Font.GothamBold,
-	Position = UDim2.fromOffset(18, 14),
-	Size = UDim2.new(1, -36, 0, 28),
-	Text = "TWIN GG XPT · ACCESO",
-	TextColor3 = WHITE,
-	TextSize = 16,
-	ZIndex = 3,
-}, accessCard)
-create("TextLabel", {
-	BackgroundTransparency = 1,
-	Font = Enum.Font.GothamMedium,
-	Position = UDim2.fromOffset(18, 44),
-	Size = UDim2.new(1, -36, 0, 24),
-	Text = "INGRESA TU KEY PARA USAR EL MENÚ",
-	TextColor3 = MUTED,
-	TextSize = 9,
-	ZIndex = 3,
-}, accessCard)
-local keyInput = create("TextBox", {
-	BackgroundColor3 = SURFACE_2,
-	BorderSizePixel = 0,
-	ClearTextOnFocus = false,
-	Font = Enum.Font.RobotoMono,
-	PlaceholderColor3 = MUTED,
-	PlaceholderText = "Escribe tu key aquí",
-	Position = UDim2.fromOffset(18, 79),
-	Size = UDim2.new(1, -36, 0, 40),
-	Text = "",
-	TextColor3 = WHITE,
-	TextSize = 11,
-	ZIndex = 3,
-}, accessCard)
-corner(keyInput, 8)
-stroke(keyInput, Color3.fromRGB(68, 84, 105), 1, 0.3)
-local keyStatus = create("TextLabel", {
-	BackgroundTransparency = 1,
-	Font = Enum.Font.GothamMedium,
-	Position = UDim2.fromOffset(18, 166),
-	Size = UDim2.new(1, -36, 0, 22),
-	Text = "",
-	TextColor3 = RED,
-	TextSize = 10,
-	TextWrapped = true,
-	ZIndex = 3,
-}, accessCard)
-local unlockButton = create("TextButton", {
-	AutoButtonColor = true,
-	BackgroundColor3 = ACCENT,
-	BorderSizePixel = 0,
-	Font = Enum.Font.GothamBold,
-	Position = UDim2.fromOffset(18, 127),
-	Size = UDim2.new(1, -36, 0, 34),
-	Text = "ACTIVAR",
-	TextColor3 = getAccentTextColor(ACCENT),
-	TextSize = 11,
-	ZIndex = 3,
-}, accessCard)
-corner(unlockButton, 8)
-local isSubmittingAccess = false
-create("TextLabel", {
-	BackgroundTransparency = 1,
-	Font = Enum.Font.RobotoMono,
-	Position = UDim2.fromOffset(18, 194),
-	Size = UDim2.new(1, -36, 0, 30),
-	Text = "FREE: AIMBOT + EPS · VIP: MENÚ COMPLETO · TRIAL: 1 HORA",
-	TextColor3 = MUTED,
-	TextSize = 8,
-	TextWrapped = true,
-	ZIndex = 3,
-}, accessCard)
-local function submitAccessKey()
-	local enteredKey = keyInput.Text:match("^%s*(.-)%s*$")
-	if enteredKey == "Free-Aimbot-JxVI-MOD-TGX" then
-		accessTier = "FREE"
-		trialExpiresAt = nil
-	elseif enteredKey == "VIP-AIMBOT-FF-JXVI-MOD-SZ10" then
-		accessTier = "VIP"
-		trialExpiresAt = nil
-	elseif enteredKey == TRIAL_KEY then
-		isSubmittingAccess = true
-		unlockButton.Active = false
-		unlockButton.Text = "VERIFICANDO..."
-		keyStatus.TextColor3 = MUTED
-		keyStatus.Text = "VERIFICANDO LA KEY..."
-		local trialRemote = ReplicatedStorage:WaitForChild("TwinGGXPT_TrialAccess", 8)
-		local remoteReady = trialRemote and trialRemote:IsA("RemoteFunction")
-		local callOk, response = false, nil
-		if remoteReady then
-			callOk, response = pcall(function() return trialRemote:InvokeServer("redeemTrial", enteredKey) end)
-		end
-		isSubmittingAccess = false
-		unlockButton.Active = true
-		unlockButton.Text = "ACTIVAR"
-		if callOk and type(response) == "table" and (response.status == "activated" or response.status == "active") and type(response.expiresAt) == "number" and response.expiresAt > workspace:GetServerTimeNow() then
-			accessTier = "TRIAL"
-			trialExpiresAt = response.expiresAt
-			local humanoid = getLocalHumanoid()
-			if humanoid then
-				trialOriginalWalkSpeed = humanoid.WalkSpeed
-				trialOriginalUseJumpPower = humanoid.UseJumpPower
-				trialOriginalJumpPower = humanoid.JumpPower
-				trialOriginalJumpHeight = humanoid.JumpHeight
-			end
-			local camera = workspace.CurrentCamera
-			trialOriginalCameraFov = camera and camera.FieldOfView or nil
-		elseif callOk and type(response) == "table" and response.status == "used" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "ESTA KEY YA FUE USADA Y LA HORA TERMINÓ."
-			keyInput.Text = ""
-			return
-		elseif callOk and type(response) == "table" and response.status == "invalid" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "LA KEY DEL CLIENTE Y DEL SERVIDOR NO COINCIDEN."
-			return
-		elseif not remoteReady then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "FALTA SCRIPT EN EL SERVICIO DE SERVIDOR."
-			return
-		elseif callOk and type(response) == "table" and response.status == "unconfigured" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "LA KEY DE PRUEBA NO ESTÁ CONFIGURADA EN EL SERVIDOR."
-			return
-		elseif callOk and type(response) == "table" and response.status == "unavailable" then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "ALMACENAMIENTO PERSISTENTE NO DISPONIBLE."
-			return
-		elseif callOk and type(response) == "table" and response.status == "cooldown" then
-			keyStatus.TextColor3 = MUTED
-			keyStatus.Text = "ESPERA 2 SEGUNDOS Y VUELVE A INTENTAR."
-			return
-		elseif not callOk then
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "EL SERVIDOR NO RESPONDIÓ. REVISA SU SCRIPT."
-			return
-		else
-			keyStatus.TextColor3 = RED
-			keyStatus.Text = "RESPUESTA INESPERADA DEL SERVIDOR."
-			return
-		end
-	else
-		keyStatus.TextColor3 = RED
-		keyStatus.Text = "KEY INCORRECTA. REVÍSALA E INTENTA DE NUEVO."
-		keyInput.Text = ""
-		return
-	end
-	isHitboxActive = (accessTier == "VIP" or accessTier == "TRIAL") and state.hitboxEnabled
-	if trialCountdownLabel then trialCountdownLabel.Visible = accessTier == "TRIAL" end
-	showPage("AIMBOT")
-	gui.Enabled = true
-	if accessTier == "TRIAL" then
-		accessGui.Enabled = false
-	else
-		accessGui:Destroy()
-	end
-end
-unlockButton.Activated:Connect(submitAccessKey)
-keyInput.FocusLost:Connect(function(enterPressed)
-	if enterPressed then submitAccessKey() end
-end)
+gui.Enabled = true
 
 -- Bucle principal del expansor de Hitbox aportado por el usuario.
 -- La GUI solo actualiza isHitboxActive, hitboxSize y showVisualBox.
@@ -2825,79 +2602,10 @@ restoreLocalHitboxExpander = function()
 	end
 end
 
-local function closeExpiredTrial()
-	if accessTier ~= "TRIAL" then return end
-	accessTier = "EXPIRED"
-	state.aimEnabled = false
-	state.selectedTarget = nil
-	state.aimNotifications = false
-	state.showFov = false
-	state.epsLines = false
-	state.epsBoxes = false
-	state.epsSkeleton = false
-	state.epsHealth = false
-	state.epsDistance = false
-	state.epsNearestLine = false
-	local restoreHitbox = state.hitboxEnabled
-	state.hitboxEnabled = false
-	state.hitboxVisible = false
-	state.smallOwnHitbox = false
-	state.showOwnHitbox = false
-	state.noclip = false
-	if state.antiLag then setAntiLag(false) end
-	state.antiLag = false
-	state.cameraFovSet = false
-	state.playerSpeed = 16
-	state.playerJump = 50
-	isHitboxActive = false
-	restoreNoclip()
-	if trialOriginalWalkSpeed then
-		local humanoid = getLocalHumanoid()
-		if humanoid then
-			humanoid.WalkSpeed = trialOriginalWalkSpeed
-			humanoid.UseJumpPower = trialOriginalUseJumpPower
-			humanoid.JumpPower = trialOriginalJumpPower
-			humanoid.JumpHeight = trialOriginalJumpHeight
-		end
-	end
-	local camera = workspace.CurrentCamera
-	if camera and trialOriginalCameraFov then camera.FieldOfView = trialOriginalCameraFov end
-	updateLocalOwnHitbox(false)
-	if restoreHitbox then restoreLocalHitboxExpander() end
-	localMusicSound:Stop()
-	gui.Enabled = false
-	keyInput.Text = ""
-	keyStatus.TextColor3 = RED
-	keyStatus.Text = "LA PRUEBA TERMINÓ. INGRESA OTRA KEY DISPONIBLE."
-	accessGui.Enabled = true
-	if trialCountdownLabel then
-		trialCountdownLabel.Visible = false
-		trialCountdownLabel.Text = "PRUEBA TERMINADA"
-	end
-end
-
-task.spawn(function()
-	while true do
-		if accessTier == "TRIAL" and trialExpiresAt then
-			local secondsLeft = math.floor(trialExpiresAt - workspace:GetServerTimeNow())
-			if secondsLeft <= 0 then
-				closeExpiredTrial()
-				break
-			end
-			if trialCountdownLabel and trialCountdownLabel.Parent then
-				local minutes = math.floor(secondsLeft / 60)
-				local seconds = secondsLeft % 60
-				trialCountdownLabel.Text = string.format("TIEMPO RESTANTE: %02d:%02d", minutes, seconds)
-			end
-		end
-		task.wait(1)
-	end
-end)
-
 RunService.RenderStepped:Connect(function()
 	-- Aplicar únicamente al jugador local; conservar la actualización del expansor remoto aparte.
-	updateLocalOwnHitbox((accessTier == "VIP" or accessTier == "TRIAL") and state.smallOwnHitbox)
-	if (accessTier ~= "VIP" and accessTier ~= "TRIAL") or not isHitboxActive then return end
+	updateLocalOwnHitbox(state.smallOwnHitbox)
+	if not isHitboxActive then return end
 
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player.Character then
